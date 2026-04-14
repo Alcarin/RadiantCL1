@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+/* ============================================================
+ * RadiantCL1 — Design System
+ * Tema: VS Code "Default Dark+" Faithful
+ * Unico file per tutti i design tokens e gli override globali.
+ * ============================================================ */
+
+@theme {
+  /* ── Backgrounds ── */
+  --color-rd-base:            #1e1e1e;
+  --color-rd-sidebar:         #252526;
+  --color-rd-activitybar:     #333333;
+  --color-rd-titlebar:        #3c3c3c;
+  --color-rd-tab-active:      #1e1e1e;
+  --color-rd-tab-inactive:    #2d2d2d;
+  --color-rd-statusbar:       #007acc;
+  --color-rd-statusbar-off:   #3c3c3c;
+  --color-rd-panel:           #1e1e1e;
+  --color-rd-input:           #3c3c3c;
+  --color-rd-dropdown:        #3c3c3c;
+  --color-rd-editor:          #1e1e1e;
+  --color-rd-list-hover:      #2a2d2e;
+  --color-rd-list-active:     #37373d;
+  --color-rd-list-focus:      #04395e;
+
+  /* ── Borders ── */
+  --color-rd-border:          #3c3c3c;
+  --color-rd-border-subtle:   #2b2b2b;
+  --color-rd-sash:            #007fd4;
+
+  /* ── Text ── */
+  --color-rd-text:            #cccccc;
+  --color-rd-text-dim:        #858585;
+  --color-rd-text-active:     #ffffff;
+  --color-rd-text-disabled:   #5a5a5a;
+
+  /* ── Accent ── */
+  --color-rd-accent:          #007acc;
+  --color-rd-accent-hover:    #1177bb;
+  --color-rd-focus-border:    #007fd4;
+
+  /* ── Semantic: Syntax Tokens (VS Code) ── */
+  --color-rd-syn-keyword:     #569cd6;
+  --color-rd-syn-string:      #ce9178;
+  --color-rd-syn-type:        #4ec9b0;
+  --color-rd-syn-function:    #dcdcaa;
+  --color-rd-syn-variable:    #9cdcfe;
+  --color-rd-syn-comment:     #6a9955;
+  --color-rd-syn-number:      #b5cea8;
+
+  /* ── Spacing ── */
+  --spacing-activity-bar:     48px;
+  --spacing-sidebar-header:   35px;
+  --spacing-tab-height:       35px;
+  --spacing-statusbar-height: 22px;
+  --spacing-menubar-height:   30px;
+}
+
+/* ── Global Reset & Base ── */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--color-rd-base);
+    color: var(--color-rd-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* VS Code-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(121, 121, 121, 0.4);
+    border-radius: 0;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(121, 121, 121, 0.7);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Disable global focus ring to avoid WebView blue borders */
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Disable text selection on UI chrome */
+  [data-ui-chrome] {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* ── Component Overrides ── */
+
+@layer components {
+  /* ── react-resizable-panels Sash ── */
+  .vscode-panel-divider {
+    background-color: var(--color-rd-border-subtle);
+    transition: background-color 150ms ease;
+  }
+
+  .vscode-panel-divider:hover,
+  .vscode-panel-divider[data-resize-handle-active] {
+    background-color: var(--color-rd-sash);
+    transition-delay: 300ms;
+  }
+
+  /* ── react-mosaic-component Overrides ── */
+  .mosaic-root {
+    background-color: var(--color-rd-base) !important;
+  }
+
+  .mosaic-tile {
+    margin: 0 !important;
+  }
+
+  .mosaic.mosaic-blueprint-theme {
+    background: var(--color-rd-base) !important;
+  }
+
+  .mosaic-window {
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-rd-editor) !important;
+    box-shadow: none !important;
+  }
+
+  .mosaic-window .mosaic-window-body {
+    flex: 1;
+    overflow: hidden;
+    background: var(--color-rd-editor);
+  }
+
+  .mosaic-window-toolbar {
+    display: none !important;
+  }
+
+  .mosaic-split {
+    z-index: 2;
+  }
+
+  .mosaic-split .mosaic-split-line {
+    background: var(--color-rd-border-subtle) !important;
+  }
+
+  .mosaic-split:hover .mosaic-split-line {
+    background: var(--color-rd-sash) !important;
+  }
+
+  /* Eliminazione bordi e artefatti di react-mosaic */
+  .mosaic-window-toolbar,
+  .mosaic-window-title,
+  .mosaic-window-controls,
+  .mosaic-default-control,
+  .mosaic-preview {
+    display: none !important;
+  }
+
+  .mosaic-window-body {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .no-drag {
+    --wails-draggable: no-drag;
+  }
+
+  .wails-drag {
+    --wails-draggable: drag;
+  }
+
+  /* ── macOS Traffic Lights ── */
+  .mac-control {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 0.5px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .mac-control-close { background-color: #ff5f56; }
+  .mac-control-minimize { background-color: #ffbd2e; }
+  .mac-control-maximize { background-color: #27c93f; }
+
+  /* Icone che appaiono solo in hover della barra o del pulsante */
+  .mac-control svg {
+    opacity: 0;
+    transition: opacity 0.1s;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .wails-drag:hover .mac-control svg {
+    opacity: 1;
+  }
+}
