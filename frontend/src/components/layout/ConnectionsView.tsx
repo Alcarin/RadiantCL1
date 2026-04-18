@@ -53,8 +53,6 @@ export const ConnectionsView: React.FC = () => {
   const [activeConnections, setActiveConnections] = useState(initialMockConnections);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Shared DND Manager singleton
-  const dndManager = getDndManager();
 
   
   const savedHostsTreeRef = useRef<TreeViewHandle>(null);
@@ -195,7 +193,6 @@ export const ConnectionsView: React.FC = () => {
               onMove={handleMoveActive}
               disableDropInto={true}
               showGuides={false}
-              dndManager={dndManager}
               className="min-h-[50px]"
             />
           )}
@@ -229,7 +226,6 @@ export const ConnectionsView: React.FC = () => {
                renderNodeActions={renderNodeActions}
               onMove={handleMoveSaved}
               isSortable={true}
-              dndManager={dndManager}
               initialOpenState={initialOpenState}
             />
           </div>

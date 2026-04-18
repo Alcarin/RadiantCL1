@@ -31,7 +31,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, it
               className={cn(
                 'relative flex items-center justify-center w-full py-[10px] transition-colors focus:outline-none',
                 isActive
-                  ? 'text-rd-text-active'
+                  ? 'text-rd-accent drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]'
                   : 'text-rd-text-dim hover:text-rd-text-active'
               )}
               title={item.label}
@@ -39,7 +39,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, it
               <Icon name={item.icon} size={20} />
               {/* Active indicator — white bar on the left, exactly like VS Code */}
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-rd-text-active rounded-r-sm" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-rd-accent shadow-rd-glow rounded-r-full transition-all" />
               )}
             </button>
           );

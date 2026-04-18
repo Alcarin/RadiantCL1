@@ -25,7 +25,6 @@ interface TreeViewProps {
   className?: string;
   showGuides?: boolean;
   disableDropInto?: boolean;
-  dndManager?: any;
 }
 
 export interface TreeViewHandle {
@@ -54,10 +53,10 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, showGu
       className={cn(
         'group relative flex items-center h-[22px] pr-2 cursor-pointer select-none transition-colors justify-between outline-none',
         isSelected
-          ? 'bg-rd-list-focus text-rd-text-active'
+          ? 'bg-rd-list-focus text-rd-list-focus-fg shadow-inner'
           : 'hover:bg-rd-list-hover text-rd-text',
         node.isDragging && 'opacity-50 grayscale-[0.5]',
-        node.willReceiveDrop && 'bg-blue-500/10 ring-1 ring-inset ring-blue-500/30'
+        node.willReceiveDrop && 'bg-rd-accent/10 ring-1 ring-inset ring-rd-accent/30'
       )}
       onClick={(e) => {
         node.select();
@@ -142,6 +141,44 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, showGu
   );
 };
 
+/**
+ * Cursore di drop personalizzato per Arborist.
+ * Sostituisce la linea blu predefinita con il tema Radiant Gold.
+ */
+const TreeCursor = ({ top, left, indent }: { top: number; left: number; indent: number }) => {
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    pointerEvents: 'none',
+    top: top - 2 + 'px',
+    left: left + 'px',
+    right: indent + 'px',
+    display: 'flex',
+    alignItems: 'center',
+    zIndex: 10,
+  };
+
+  const circleStyle: React.CSSProperties = {
+    width: '4px',
+    height: '4px',
+    boxShadow: '0 0 0 3px var(--color-rd-accent)',
+    borderRadius: '50%',
+  };
+
+  const lineStyle: React.CSSProperties = {
+    flex: 1,
+    height: '2px',
+    background: 'var(--color-rd-accent)',
+    borderRadius: '1px',
+  };
+
+  return (
+    <div style={style}>
+      <div style={circleStyle} />
+      <div style={lineStyle} />
+    </div>
+  );
+};
+
 export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   nodes,
   onSelect,
@@ -154,7 +191,6 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   className,
   showGuides = true,
   disableDropInto = false,
-  dndManager,
   initialOpenState,
 }, ref) => {
   const treeRef = useRef<TreeApi<TreeNode>>(null);
@@ -182,7 +218,6 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
       <Tree
         ref={treeRef}
         data={nodes}
-        dndManager={dndManager}
         initialOpenState={initialOpenState}
         openByDefault={false}
         width="100%"
@@ -196,6 +231,7 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
         onMove={onMove}
         disableDrag={!isSortable}
         disableDrop={!isSortable}
+        renderCursor={TreeCursor}
       >
         {(props) => (
           <NodeRenderer 

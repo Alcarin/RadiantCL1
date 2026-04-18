@@ -4,7 +4,7 @@ import { Icon } from '../ui/Icon';
 export const StatusBar: React.FC = () => {
   return (
     <div
-      className="flex items-center justify-between px-2.5 bg-rd-statusbar text-rd-text-active text-[12px] shrink-0 select-none"
+      className="flex items-center justify-between px-2.5 bg-rd-statusbar text-rd-statusbar-fg text-[12px] shrink-0 select-none"
       style={{ height: 'var(--spacing-statusbar-height)' }}
       data-ui-chrome
     >

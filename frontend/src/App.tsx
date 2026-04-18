@@ -18,6 +18,8 @@ import { MosaicNode } from 'react-mosaic-component';
 import { ConnectionsView } from './components/layout/ConnectionsView';
 import { SideBarSection } from './components/layout/SideBarSection';
 import { getDndManager } from './lib/dnd';
+import { MultiBackend } from 'react-dnd-multi-backend';
+import { HTML5toTouch } from 'rdndmb-html5-to-touch';
 
 // Interface to wrap FileResponse without breaking class integrity
 interface OpenFile {
@@ -144,7 +146,7 @@ function App() {
   );
 
   return (
-    <DndProvider manager={getDndManager()}>
+    <DndProvider backend={MultiBackend} options={HTML5toTouch}>
       <Layout
         activityBar={activityBar}
         sideBar={sideBar}
