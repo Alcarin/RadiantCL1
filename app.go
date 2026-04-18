@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"radiantcl1/backend/db"
+	"radiantcl1/backend/protocols"
 	"radiantcl1/parser"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -19,8 +20,9 @@ type ASTNode struct {
 }
 
 type App struct {
-	ctx       context.Context
-	dbManager *db.Manager
+	ctx             context.Context
+	dbManager       *db.Manager
+	terminalService *protocols.TerminalService
 }
 
 func NewApp() *App {
@@ -37,6 +39,10 @@ func (a *App) startup(ctx context.Context) {
 	} else {
 		a.dbManager = manager
 	}
+
+	// Initialize terminal service
+	a.terminalService = protocols.NewTerminalService()
+	a.terminalService.SetContext(ctx)
 }
 
 // shutdown is called when the application is terminating
@@ -191,5 +197,63 @@ func (a *App) MoveItem(itemType string, id int64, targetFolderID int64, sortOrde
 		return a.dbManager.MoveHost(id, targetID, sortOrder)
 	}
 	return fmt.Errorf("invalid item type: %s", itemType)
+}
+
+// ConnectTerminal avvia una connessione terminale per un host
+func (a *App) ConnectTerminal(hostID int64, username string, password string) (string, error) {
+	if a.dbManager == nil {
+		return "", fmt.Errorf("database not initialized")
+	}
+
+	// Recupera dati host
+	var h db.Host
+	err := a.dbManager.DB.QueryRow("SELECT id, label, address, type, port FROM hosts WHERE id = ?", hostID).Scan(
+		&h.ID, &h.Label, &h.Address, &h.Type, &h.Port)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch host: %w", err)
+	}
+
+	sessionID := fmt.Sprintf("term-%d-%d", hostID, os.Getpid())
+	
+	if h.Type == "ssh" {
+		err = a.terminalService.ConnectSSH(sessionID, h.Label, h.Address, h.Port, username, password)
+	} else {
+		// Telnet ignora user/pass passati dalla modale poiché è interattivo nel terminale
+		err = a.terminalService.ConnectTelnet(sessionID, h.Label, h.Address, h.Port)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return sessionID, nil
+}
+
+// GetActiveConnections restituisce l'elenco delle connessioni attive
+func (a *App) GetActiveConnections() []protocols.SessionInfo {
+	if a.terminalService == nil {
+		return []protocols.SessionInfo{}
+	}
+	return a.terminalService.GetSessions()
+}
+
+// SendTerminalData invia dati a una sessione terminale attiva
+func (a *App) SendTerminalData(sessionID string, data string) error {
+	return a.terminalService.SendData(sessionID, data)
+}
+
+// ResizeTerminal ridimensiona la finestra del terminale remoto
+func (a *App) ResizeTerminal(sessionID string, cols, rows int) error {
+	return a.terminalService.ResizeTerminal(sessionID, cols, rows)
+}
+
+// CloseTerminal chiude una sessione terminale
+func (a *App) CloseTerminal(sessionID string) {
+	a.terminalService.CloseSession(sessionID)
+}
+
+// MarkTerminalReady segnala che il frontend è pronto a ricevere dati per la sessione
+func (a *App) MarkTerminalReady(sessionID string) {
+	a.terminalService.MarkReady(sessionID)
 }
 

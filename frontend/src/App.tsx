@@ -21,19 +21,58 @@ import { getDndManager } from './lib/dnd';
 import { MultiBackend } from 'react-dnd-multi-backend';
 import { HTML5toTouch } from 'rdndmb-html5-to-touch';
 
-// Interface to wrap FileResponse without breaking class integrity
-interface OpenFile {
+// Interface for all open components in tabs
+interface OpenTab {
   id: string;
-  data: main.FileResponse;
+  name: string;
+  type: 'editor' | 'terminal';
+  content?: string; // For editor
+  sessionId?: string; // For terminal
+  hostId?: number; // Optional reference
+  ast?: any; // For cisco config AST
 }
+
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
+import { useEffect } from 'react';
+import { CloseTerminal } from '../wailsjs/go/main/App';
 
 function App() {
   // State
-  const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
   const [activeSideBar, setActiveSideBar] = useLocalStorage<'connections' | 'explorer' | 'ast' | 'search'>('activeSideBar', 'connections');
   const [mosaicLayout, setMosaicLayout] = useLocalStorage<MosaicNode<MosaicId> | null>('mosaicLayout', 'main-group');
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
   const [sideBarVisible, setSideBarVisible] = useState(true);
+
+  // Listen for terminal open events
+  useEffect(() => {
+    const handleOpenTerminal = (data: { sessionId: string, name: string, hostId: number }) => {
+      const tabId = `term-${data.sessionId}`;
+      
+      setOpenTabs(prev => {
+        // Evita di riaprire lo stesso terminale se già aperto (opzionale)
+        const alreadyOpen = prev.find(t => t.sessionId === data.sessionId);
+        if (alreadyOpen) {
+          setActiveTabPerGroup(pg => ({ ...pg, 'main-group': alreadyOpen.id }));
+          return prev;
+        }
+
+        const newTab: OpenTab = {
+          id: tabId,
+          name: data.name,
+          type: 'terminal',
+          sessionId: data.sessionId,
+          hostId: data.hostId
+        };
+        return [...prev, newTab];
+      });
+      
+      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
+    };
+
+    EventsOn('app:open-terminal', handleOpenTerminal);
+    return () => EventsOff('app:open-terminal');
+  }, []);
 
   // Handlers
   const handleOpenConfig = async () => {
@@ -45,31 +84,44 @@ function App() {
         return;
       }
       
-      const fileId = `file-${Date.now()}`;
-      // Wrap correctly
-      setOpenFiles(prev => [...prev, { id: fileId, data: res }]);
-      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': fileId }));
+      const tabId = `file-${Date.now()}`;
+      setOpenTabs(prev => [...prev, { 
+        id: tabId, 
+        name: res.name || 'document', 
+        type: 'editor', 
+        content: res.content,
+        ast: res.ast
+      }]);
+      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
     } catch (err) {
       console.error("Error: " + err);
     }
   };
 
-  const closeFile = (id: string) => {
-    setOpenFiles(prev => prev.filter(f => f.id !== id));
+  const closeTab = (id: string) => {
+    const tabToRemove = openTabs.find(t => t.id === id);
+    if (tabToRemove && tabToRemove.type === 'terminal' && tabToRemove.sessionId) {
+      CloseTerminal(tabToRemove.sessionId).catch(err => {
+        console.error("Failed to close terminal session:", err);
+      });
+    }
+    setOpenTabs(prev => prev.filter(t => t.id !== id));
   };
 
   // Memoized Views
   const explorerNodes = useMemo<TreeNode[]>(() => {
-    return openFiles.map(f => ({
-      id: f.id,
-      label: f.data.name || 'document',
-      icon: 'file' as const,
-    }));
-  }, [openFiles]);
+    return openTabs
+      .filter(t => t.type === 'editor')
+      .map(t => ({
+        id: t.id,
+        label: t.name,
+        icon: 'file' as const,
+      }));
+  }, [openTabs]);
 
-  const activeFileInGroup = (groupId: string) => {
+  const activeTabInGroup = (groupId: string) => {
     const activeId = activeTabPerGroup[groupId];
-    return openFiles.find(f => f.id === activeId);
+    return openTabs.find(t => t.id === activeId);
   };
 
   // Shell Components
@@ -115,8 +167,8 @@ function App() {
       )}
       {activeSideBar === 'ast' && (
         <div className="p-2 overflow-x-auto">
-          {activeFileInGroup('main-group')?.data.ast ? (
-            <ASTNodeView node={activeFileInGroup('main-group')!.data.ast!} defaultExpanded={true} />
+          {activeTabInGroup('main-group')?.ast ? (
+            <ASTNodeView node={activeTabInGroup('main-group')!.ast!} defaultExpanded={true} />
           ) : (
             <div className="p-4 text-xs text-zinc-500 italic">Seleziona un file con AST</div>
           )}
@@ -130,14 +182,19 @@ function App() {
       layout={mosaicLayout}
       onChange={setMosaicLayout}
       renderTile={(groupId) => {
-        const activeFile = activeFileInGroup(groupId);
+        const activeTab = activeTabInGroup(groupId);
         return (
           <EditorGroup
-            tabs={openFiles.map(f => ({ id: f.id, name: f.data.name || '' }))}
+            tabs={openTabs.map(t => ({ 
+              id: t.id, 
+              name: t.name, 
+              type: t.type, 
+              sessionId: t.sessionId 
+            }))}
             activeTabId={activeTabPerGroup[groupId] || ''}
             onTabSelect={(id) => setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }))}
-            onTabClose={closeFile}
-            content={activeFile?.data.content || ''}
+            onTabClose={closeTab}
+            content={activeTab?.content || ''}
             language="text"
           />
         );

@@ -1,15 +1,14 @@
 import React from 'react';
-import Editor, { loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import Editor from '@monaco-editor/react';
 import { Icon } from '../ui/Icon';
+import { Terminal } from '../ui/Terminal';
 import { cn } from '../../lib/utils';
-
-// Configura il loader per usare l'istanza locale di monaco installata via npm
-loader.config({ monaco });
 
 interface Tab {
   id: string;
   name: string;
+  type?: 'editor' | 'terminal';
+  sessionId?: string;
   isModified?: boolean;
 }
 
@@ -56,12 +55,13 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
                 <div className="absolute top-0 left-0 right-0 h-px bg-rd-focus-border" />
               )}
 
-              {/* File icon */}
+              {/* File/Terminal icon */}
               <Icon
-                name="file"
+                name={tab.type === 'terminal' ? 'terminal' : 'file'}
                 size={14}
                 className={cn(
-                  isActive ? 'text-rd-text-active' : 'text-rd-text-dim'
+                  isActive ? 'text-rd-text-active' : 'text-rd-text-dim',
+                  tab.type === 'terminal' && 'text-rd-accent'
                 )}
               />
 
@@ -92,29 +92,45 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
         })}
       </div>
 
-      {/* ── Editor Area ── */}
-      <div className="flex-1 min-h-0">
-        <Editor
-          height="100%"
-          language={language}
-          theme="vs-dark"
-          value={content}
-          options={{
-            readOnly: true,
-            minimap: { enabled: true },
-            fontSize: 13,
-            fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
-            wordWrap: 'on',
-            padding: { top: 8 },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            renderLineHighlight: 'line',
-            lineHeight: 20,
-            letterSpacing: 0.3,
-            cursorBlinking: 'smooth',
-            smoothScrolling: true,
-          }}
-        />
+      {/* ── Content Area ── */}
+      <div className="flex-1 min-h-0 relative">
+        {/* Render all terminals but hide inactive ones to preserve state */}
+        {tabs.filter(t => t.type === 'terminal').map(t => (
+          <div 
+            key={t.id} 
+            className={cn(
+              "absolute inset-0 w-full h-full",
+              t.id === activeTabId ? "visible z-10" : "invisible z-0 pointer-events-none"
+            )}
+          >
+            <Terminal sessionId={t.sessionId || ''} />
+          </div>
+        ))}
+
+        {/* Render editor only if active tab is NOT a terminal */}
+        {tabs.find(t => t.id === activeTabId)?.type !== 'terminal' && (
+          <Editor
+            height="100%"
+            language={language}
+            theme="vs-dark"
+            value={content}
+            options={{
+              readOnly: true,
+              minimap: { enabled: true },
+              fontSize: 13,
+              fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
+              wordWrap: 'on',
+              padding: { top: 8 },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              renderLineHighlight: 'line',
+              lineHeight: 20,
+              letterSpacing: 0.3,
+              cursorBlinking: 'smooth',
+              smoothScrolling: true,
+            }}
+          />
+        )}
       </div>
     </div>
   );

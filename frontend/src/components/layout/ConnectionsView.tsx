@@ -2,13 +2,15 @@ import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { SideBarSection } from './SideBarSection';
 import { TreeView, TreeNode, TreeViewHandle } from '../ui/TreeView';
 import { IconName } from '../ui/Icon';
-import { mockConnections as initialMockConnections } from '../../lib/mockData';
 import { HostsService } from '../../lib/hosts_service';
 import { HostFormModal } from './modals/HostFormModal';
 import { FolderFormModal } from './modals/FolderFormModal';
 import { DeleteConfirmModal } from './modals/DeleteConfirmModal';
+import { LoginModal } from './modals/LoginModal';
 import { db } from '../../../wailsjs/go/models';
 import { getDndManager } from '../../lib/dnd';
+import { EventsEmit, EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
+import { ConnectTerminal, GetActiveConnections } from '../../../wailsjs/go/main/App';
 
 interface ActionButtonProps {
   icon: IconName;
@@ -50,13 +52,20 @@ const ActionButtonProper: React.FC<ActionButtonProps> = ({ icon, title, onClick 
 export const ConnectionsView: React.FC = () => {
   const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
   const [hosts, setHosts] = useState<TreeNode[]>([]);
-  const [activeConnections, setActiveConnections] = useState(initialMockConnections);
+  const [activeConnections, setActiveConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
 
   
   const savedHostsTreeRef = useRef<TreeViewHandle>(null);
   const activeConnectionsTreeRef = useRef<TreeViewHandle>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, node: TreeNode } | null>(null);
+  const [loginModal, setLoginModal] = useState<{ 
+    isOpen: boolean, 
+    node?: TreeNode,
+    error?: string | null,
+    isConnecting?: boolean
+  }>({ isOpen: false });
 
   const loadHosts = useCallback(async () => {
     if (hosts.length === 0) setIsLoading(true);
@@ -65,9 +74,26 @@ export const ConnectionsView: React.FC = () => {
     setIsLoading(false);
   }, [hosts.length]);
 
+  const loadActiveConnections = useCallback(async () => {
+    try {
+      const connections = await GetActiveConnections();
+      setActiveConnections(connections || []);
+    } catch (err) {
+      console.error("Failed to load active connections:", err);
+    }
+  }, []);
+
   React.useEffect(() => {
     loadHosts();
-  }, []); // Only call loadHosts once on mount
+    loadActiveConnections();
+  }, [loadHosts, loadActiveConnections]);
+
+  React.useEffect(() => {
+    EventsOn('terminal:sessions-updated', loadActiveConnections);
+    return () => {
+      EventsOff('terminal:sessions-updated');
+    };
+  }, [loadActiveConnections]);
 
   const initialOpenState = useMemo(() => {
     return HostsService.getExpandedMap(hosts);
@@ -103,6 +129,57 @@ export const ConnectionsView: React.FC = () => {
     }
     loadHosts();
   };
+
+  const handleConnect = async (node: TreeNode, username = '', password = '') => {
+     if (node.id.startsWith('f-')) return;
+     
+     // Se SSH e non abbiamo credenziali, apri la modale
+     if (node.data.type === 'ssh' && !username) {
+       setLoginModal({ isOpen: true, node, error: null, isConnecting: false });
+       setContextMenu(null);
+       return;
+     }
+
+     if (username) {
+       setLoginModal(prev => ({ ...prev, isConnecting: true, error: null }));
+     }
+
+     try {
+       const hostId = HostsService.parseId(node.id);
+       if (hostId === undefined) return;
+       
+       const sessionId = await ConnectTerminal(hostId, username, password);
+       // Notifica l'App di aprire un nuovo tab per questo sessionId
+       EventsEmit('app:open-terminal', { 
+         sessionId, 
+         name: node.label,
+         hostId 
+       });
+       setLoginModal({ isOpen: false });
+     } catch (err) {
+       const errorMessage = err instanceof Error ? err.message : String(err);
+       console.error("Connection failed:", errorMessage);
+       
+       if (node.data.type === 'ssh') {
+         setLoginModal(prev => ({ ...prev, isOpen: true, node, error: errorMessage, isConnecting: false }));
+       } else {
+         alert(`Errore di connessione: ${errorMessage}`);
+       }
+     }
+     setContextMenu(null);
+  };
+
+  const onNodeContextMenu = (e: React.MouseEvent, node: TreeNode) => {
+    e.preventDefault();
+    if (node.id.startsWith('f-')) return;
+    setContextMenu({ x: e.clientX, y: e.clientY, node });
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const handleDeleteConfirm = async () => {
     if (!modalState.node) return;
@@ -177,64 +254,105 @@ export const ConnectionsView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <SideBarSection 
-        title="Active Connections"
-        actions={<ActionButtonProper icon="plus" title="New Connection" onClick={() => {}} />}
-      >
-        <div className="flex flex-col">
-          {activeConnections.length === 0 ? (
-            <div className="px-5 py-2 text-[12px] text-rd-text-dim italic">No active connections</div>
-          ) : (
-            <TreeView
-              ref={activeConnectionsTreeRef}
-              nodes={mappedActiveConnections}
-              selectedId={selectedHostId}
-              onSelect={(node) => setSelectedHostId(node.id)}
-              onMove={handleMoveActive}
-              disableDropInto={true}
-              showGuides={false}
-              className="min-h-[50px]"
-            />
-          )}
-        </div>
-      </SideBarSection>
-
-      <SideBarSection 
-        title="Saved Hosts"
-        actions={
-          <>
-            <ActionButtonProper icon="plus" title="Add Host" onClick={() => setModalState({ type: 'host', isEdit: false })} />
-            <ActionButtonProper icon="folderPlus" title="Add Folder" onClick={() => setModalState({ type: 'folder', isEdit: false })} />
-            <ActionButtonProper icon="fold" title="Collapse All" onClick={collapseAll} />
-            <ActionButtonProper icon="maximize" title="Expand All" onClick={expandAll} />
-            <ActionButtonProper icon="refresh" title="Reload" onClick={loadHosts} />
-          </>
-        }
-      >
-        {isLoading ? (
-          <div className="px-5 py-2 text-[12px] text-rd-text-dim animate-pulse">Caricamento host...</div>
-        ) : (
-          <div className="pt-2 pb-12 overflow-y-auto">
-            <TreeView
-              ref={savedHostsTreeRef}
-              nodes={hosts}
-              selectedId={selectedHostId}
-              onSelect={(node) => setSelectedHostId(node.id)}
-              onToggleExpand={(id, expanded) => {
-                HostsService.toggleFolder(id, expanded);
-              }}
-               renderNodeActions={renderNodeActions}
-              onMove={handleMoveSaved}
-              isSortable={true}
-              initialOpenState={initialOpenState}
-            />
+      <div className="shrink-0 border-b border-rd-border">
+        <SideBarSection 
+          title="Active Connections"
+          actions={<ActionButtonProper icon="plus" title="New Connection" onClick={() => {}} />}
+        >
+          <div className="flex flex-col">
+            {activeConnections.length === 0 ? (
+              <div className="px-5 py-2 text-[12px] text-rd-text-dim italic">No active connections</div>
+            ) : (
+              <TreeView
+                ref={activeConnectionsTreeRef}
+                nodes={mappedActiveConnections}
+                selectedId={selectedHostId}
+                onSelect={(node) => setSelectedHostId(node.id)}
+                onMove={handleMoveActive}
+                disableDropInto={true}
+                showGuides={false}
+              />
+            )}
           </div>
-        )}
-      </SideBarSection>
+        </SideBarSection>
+      </div>
+
+      <div className="flex-1 min-h-0">
+        <SideBarSection 
+          title="Saved Hosts"
+          actions={
+            <>
+              <ActionButtonProper icon="plus" title="Add Host" onClick={() => setModalState({ type: 'host', isEdit: false })} />
+              <ActionButtonProper icon="folderPlus" title="Add Folder" onClick={() => setModalState({ type: 'folder', isEdit: false })} />
+              <ActionButtonProper icon="fold" title="Collapse All" onClick={collapseAll} />
+              <ActionButtonProper icon="maximize" title="Expand All" onClick={expandAll} />
+              <ActionButtonProper icon="refresh" title="Reload" onClick={loadHosts} />
+            </>
+          }
+        >
+          {isLoading ? (
+            <div className="px-5 py-2 text-[12px] text-rd-text-dim animate-pulse">Caricamento host...</div>
+          ) : (
+            <div className="pt-2 pb-12 overflow-y-auto h-full">
+              <TreeView
+                ref={savedHostsTreeRef}
+                nodes={hosts}
+                selectedId={selectedHostId}
+                onSelect={(node) => setSelectedHostId(node.id)}
+                onToggleExpand={(id, expanded) => {
+                  HostsService.toggleFolder(id, expanded);
+                }}
+                renderNodeActions={renderNodeActions}
+                onNodeDoubleClick={handleConnect}
+                onNodeContextMenu={onNodeContextMenu}
+                onMove={handleMoveSaved}
+                isSortable={true}
+                initialOpenState={initialOpenState}
+                className="h-full"
+              />
+            </div>
+          )}
+        </SideBarSection>
+      </div>
+
+      {contextMenu && (
+        <div 
+          className="fixed z-50 bg-rd-bg-main border border-rd-border shadow-xl rounded-md py-1 min-w-[160px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button 
+            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-2"
+            onClick={() => handleConnect(contextMenu.node)}
+          >
+            <Icon name="network" size={14} className="text-rd-accent" />
+            <span>Connect</span>
+          </button>
+          <div className="h-px bg-rd-border my-1" />
+          <button 
+            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-2"
+            onClick={() => {
+              setModalState({ type: 'host', isEdit: true, node: contextMenu.node });
+              setContextMenu(null);
+            }}
+          >
+            <Icon name="settings" size={14} />
+            <span>Edit Host</span>
+          </button>
+        </div>
+      )}
 
       <HostFormModal isOpen={modalState.type === 'host'} onClose={() => setModalState({ type: null, isEdit: false })} onSave={handleSaveHost} isEdit={modalState.isEdit} initialData={modalState.node?.data} />
       <FolderFormModal isOpen={modalState.type === 'folder'} onClose={() => setModalState({ type: null, isEdit: false })} onSave={handleSaveFolder} isEdit={modalState.isEdit} initialLabel={modalState.node?.label} />
       <DeleteConfirmModal isOpen={modalState.type === 'delete'} onClose={() => setModalState({ type: null, isEdit: false })} onConfirm={handleDeleteConfirm} title={modalState.node?.id.startsWith('f-') ? 'Elimina Cartella' : 'Elimina Host'} itemName={modalState.node?.label || ''} itemType={modalState.node?.id.startsWith('f-') ? 'folder' : 'host'} />
+      <LoginModal 
+        isOpen={loginModal.isOpen} 
+        onClose={() => setLoginModal({ isOpen: false })} 
+        onLogin={(user, pass) => loginModal.node && handleConnect(loginModal.node, user, pass)} 
+        hostName={loginModal.node?.label || ''} 
+        error={loginModal.error}
+        isConnecting={loginModal.isConnecting}
+      />
     </div>
   );
 };

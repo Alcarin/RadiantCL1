@@ -21,6 +21,8 @@ interface TreeViewProps {
   onToggleExpand?: (id: string, expanded: boolean) => void;
   renderNodeActions?: (node: TreeNode) => React.ReactNode;
   onMove?: (args: { dragIds: string[]; parentId: string | null; index: number }) => void;
+  onNodeDoubleClick?: (node: TreeNode) => void;
+  onNodeContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
   isSortable?: boolean;
   className?: string;
   showGuides?: boolean;
@@ -33,10 +35,12 @@ export interface TreeViewHandle {
 
 interface NodeRendererExtraProps extends NodeRendererProps<TreeNode> {
   renderNodeActions?: (node: TreeNode) => React.ReactNode;
+  onNodeDoubleClick?: (node: TreeNode) => void;
+  onNodeContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
   showGuides?: boolean;
 }
 
-const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, showGuides }: NodeRendererExtraProps) => {
+const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNodeDoubleClick, onNodeContextMenu, showGuides }: NodeRendererExtraProps) => {
   const isFolder = node.data.id.startsWith('f-') || (node.data.children && node.data.children.length > 0);
   const hasChildren = node.data.children && node.data.children.length > 0;
   const isSelected = node.isSelected;
@@ -61,7 +65,18 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, showGu
       onClick={(e) => {
         node.select();
       }}
-      onDoubleClick={() => node.toggle()}
+      onDoubleClick={(e) => {
+        if (onNodeDoubleClick) {
+          onNodeDoubleClick(node.data);
+        } else {
+          node.toggle();
+        }
+      }}
+      onContextMenu={(e) => {
+        if (onNodeContextMenu) {
+          onNodeContextMenu(e, node.data);
+        }
+      }}
     >
       <div className="flex items-center min-w-0 pointer-events-none">
         {/* Indentation guides */}
@@ -192,6 +207,8 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   showGuides = true,
   disableDropInto = false,
   initialOpenState,
+  onNodeDoubleClick,
+  onNodeContextMenu,
 }, ref) => {
   const treeRef = useRef<TreeApi<TreeNode>>(null);
 
@@ -214,7 +231,7 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   };
 
   return (
-    <div className={cn("flex flex-col h-full w-full", className)}>
+    <div className={cn("flex flex-col w-full", className)}>
       <Tree
         ref={treeRef}
         data={nodes}
@@ -237,6 +254,8 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
           <NodeRenderer 
             {...props} 
             renderNodeActions={renderNodeActions} 
+            onNodeDoubleClick={onNodeDoubleClick}
+            onNodeContextMenu={onNodeContextMenu}
             showGuides={showGuides} 
           />
         )}

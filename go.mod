@@ -7,6 +7,7 @@ require (
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/wailsapp/wails/v2 v2.11.0
+	golang.org/x/crypto v0.50.0
 	modernc.org/sqlite v1.48.2
 )
 
@@ -41,7 +42,6 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect

@@ -11,4 +11,13 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   DeleteFolder: vi.fn(),
   UpdateHost: vi.fn(),
   DeleteHost: vi.fn(),
+  GetActiveConnections: vi.fn(),
+  ConnectTerminal: vi.fn(),
+}));
+
+// Mock Wails runtime
+vi.mock('../../wailsjs/runtime/runtime', () => ({
+  EventsOn: vi.fn(),
+  EventsOff: vi.fn(),
+  EventsEmit: vi.fn(),
 }));

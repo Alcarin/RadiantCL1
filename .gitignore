@@ -32,3 +32,7 @@ pnpm-debug.log*
 
 # development
 .doc
+
+# RadiantCL1 Binaries (Jujutsu)
+!backend/protocols/bin/
+!backend/protocols/bin/**
