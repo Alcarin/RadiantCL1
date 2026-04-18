@@ -52,9 +52,10 @@ export const ConnectionsView: React.FC = () => {
   const [hosts, setHosts] = useState<TreeNode[]>([]);
   const [activeConnections, setActiveConnections] = useState(initialMockConnections);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   // Shared DND Manager singleton
   const dndManager = getDndManager();
+
   
   const savedHostsTreeRef = useRef<TreeViewHandle>(null);
   const activeConnectionsTreeRef = useRef<TreeViewHandle>(null);
@@ -225,7 +226,7 @@ export const ConnectionsView: React.FC = () => {
               onToggleExpand={(id, expanded) => {
                 HostsService.toggleFolder(id, expanded);
               }}
-              renderNodeActions={renderNodeActions}
+               renderNodeActions={renderNodeActions}
               onMove={handleMoveSaved}
               isSortable={true}
               dndManager={dndManager}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { DndProvider } from 'react-dnd';
 import { OpenConfig } from '../wailsjs/go/main/App';
 import { main } from '../wailsjs/go/models';
 import { ASTNodeView } from './components/ASTNodeView';
@@ -11,11 +12,12 @@ import { MenuBar } from './components/layout/MenuBar';
 import { EditorMosaic, MosaicId } from './components/layout/EditorMosaic';
 import { EditorGroup } from './components/layout/EditorGroup';
 import { TreeView, TreeNode } from './components/ui/TreeView';
+import { Icon } from './components/ui/Icon';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MosaicNode } from 'react-mosaic-component';
-import { Icon } from './components/ui/Icon';
 import { ConnectionsView } from './components/layout/ConnectionsView';
 import { SideBarSection } from './components/layout/SideBarSection';
+import { getDndManager } from './lib/dnd';
 
 // Interface to wrap FileResponse without breaking class integrity
 interface OpenFile {
@@ -142,16 +144,18 @@ function App() {
   );
 
   return (
-    <Layout
-      activityBar={activityBar}
-      sideBar={sideBar}
-      mainContent={mainContent}
-      bottomPanel={<div className="p-4 text-zinc-500 text-xs">Terminal / Logs Output</div>}
-      statusBar={<StatusBar />}
-      topBar={<MenuBar />}
-      sideBarVisible={sideBarVisible}
-      bottomPanelVisible={true}
-    />
+    <DndProvider manager={getDndManager()}>
+      <Layout
+        activityBar={activityBar}
+        sideBar={sideBar}
+        mainContent={mainContent}
+        bottomPanel={<div className="p-4 text-zinc-500 text-xs">Terminal / Logs Output</div>}
+        statusBar={<StatusBar />}
+        topBar={<MenuBar />}
+        sideBarVisible={sideBarVisible}
+        bottomPanelVisible={true}
+      />
+    </DndProvider>
   );
 }
 
