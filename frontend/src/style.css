@@ -14,7 +14,8 @@
   --color-rd-titlebar:        #3c3c3c;
   --color-rd-tab-active:      #1e1e1e;
   --color-rd-tab-inactive:    #2d2d2d;
-  --color-rd-statusbar:       #007acc;
+  --color-rd-statusbar:       #facc15;
+  --color-rd-statusbar-fg:    oklch(from var(--color-rd-statusbar) clamp(0, (l - 0.5) * -100, 1) 0 0);
   --color-rd-statusbar-off:   #3c3c3c;
   --color-rd-panel:           #1e1e1e;
   --color-rd-input:           #3c3c3c;
@@ -22,12 +23,13 @@
   --color-rd-editor:          #1e1e1e;
   --color-rd-list-hover:      #2a2d2e;
   --color-rd-list-active:     #37373d;
-  --color-rd-list-focus:      #04395e;
+  --color-rd-list-focus:      #854d0e;
+  --color-rd-list-focus-fg:   oklch(from var(--color-rd-list-focus) clamp(0, (l - 0.5) * -100, 1) 0 0);
 
   /* ── Borders ── */
   --color-rd-border:          #3c3c3c;
   --color-rd-border-subtle:   #2b2b2b;
-  --color-rd-sash:            #007fd4;
+  --color-rd-sash:            #fde047;
 
   /* ── Text ── */
   --color-rd-text:            #cccccc;
@@ -36,9 +38,14 @@
   --color-rd-text-disabled:   #5a5a5a;
 
   /* ── Accent ── */
-  --color-rd-accent:          #007acc;
-  --color-rd-accent-hover:    #1177bb;
-  --color-rd-focus-border:    #007fd4;
+  --color-rd-accent:          #fde047;
+  --color-rd-accent-fg:       oklch(from var(--color-rd-accent) clamp(0, (l - 0.5) * -100, 1) 0 0);
+  --color-rd-accent-hover:    #facc15;
+  --color-rd-focus-border:    #fef08a;
+
+  /* ── Effects ── */
+  --shadow-rd-glow:           0 0 15px rgba(253, 224, 71, 0.4);
+  --shadow-rd-glow-strong:    0 0 25px rgba(253, 224, 71, 0.6);
 
   /* ── Semantic: Syntax Tokens (VS Code) ── */
   --color-rd-syn-keyword:     #569cd6;
@@ -193,6 +200,20 @@
     flex: 1 !important;
     display: flex !important;
     flex-direction: column !important;
+  }
+
+  /* ── Drag & Drop Overrides ── */
+  .mosaic-drop-target .drop-target-container .drop-target {
+    background-color: var(--color-rd-accent) !important;
+    opacity: 0.1 !important;
+    border: 2px solid var(--color-rd-accent) !important;
+  }
+
+  .mosaic-preview {
+    background-color: var(--color-rd-list-active) !important;
+    border: 1px solid var(--color-rd-accent) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    opacity: 0.8 !important;
   }
 
   .no-drag {
