@@ -6,6 +6,7 @@ import {
 } from 'react-mosaic-component';
 import 'react-mosaic-component/react-mosaic-component.css';
 import { Icon } from '../ui/Icon';
+import { getDndManager } from '../../lib/dnd';
 
 export type MosaicId = string;
 
@@ -36,6 +37,7 @@ export const EditorMosaic: React.FC<EditorMosaicProps> = ({
         onChange={onChange}
         className="mosaic-blueprint-theme bp5-dark"
         zeroStateView={<ZeroState />}
+        dragAndDropManager={getDndManager()}
       />
     </div>
   );

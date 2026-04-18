@@ -14,6 +14,8 @@ import { TreeView, TreeNode } from './components/ui/TreeView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MosaicNode } from 'react-mosaic-component';
 import { Icon } from './components/ui/Icon';
+import { ConnectionsView } from './components/layout/ConnectionsView';
+import { SideBarSection } from './components/layout/SideBarSection';
 
 // Interface to wrap FileResponse without breaking class integrity
 interface OpenFile {
@@ -24,7 +26,7 @@ interface OpenFile {
 function App() {
   // State
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
-  const [activeSideBar, setActiveSideBar] = useLocalStorage<'explorer' | 'ast' | 'search'>('activeSideBar', 'explorer');
+  const [activeSideBar, setActiveSideBar] = useLocalStorage<'connections' | 'explorer' | 'ast' | 'search'>('activeSideBar', 'connections');
   const [mosaicLayout, setMosaicLayout] = useLocalStorage<MosaicNode<MosaicId> | null>('mosaicLayout', 'main-group');
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
   const [sideBarVisible, setSideBarVisible] = useState(true);
@@ -78,6 +80,7 @@ function App() {
         }
       }}
       items={[
+        { id: 'connections', icon: 'network', label: 'Connections' },
         { id: 'explorer', icon: 'file', label: 'Explorer' },
         { id: 'search', icon: 'search', label: 'Search' },
         { id: 'ast', icon: 'layout', label: 'AST Viewer' },
@@ -88,29 +91,23 @@ function App() {
   const sideBar = (
     <SideBar 
       title={activeSideBar} 
-      actions={
-        activeSideBar === 'explorer' ? (
-          <button onClick={handleOpenConfig} className="p-1 hover:bg-zinc-800 rounded">
-            <Icon name="plus" size={14} />
-          </button>
-        ) : null
-      }
     >
+      {activeSideBar === 'connections' && <ConnectionsView />}
       {activeSideBar === 'explorer' && (
-        <div className="flex flex-col">
-          {/* Section Header */}
-          <div className="flex items-center h-[22px] px-1 hover:bg-rd-list-hover cursor-pointer text-rd-text-dim hover:text-rd-text transition-colors mt-0.5 mb-0.5">
-            <Icon name="chevronDown" size={14} className="mr-0.5" />
-            <span className="text-[11px] font-bold tracking-wide uppercase">Open Editors</span>
-          </div>
-          
+        <SideBarSection 
+          title="Open Editors"
+          actions={
+            <button onClick={handleOpenConfig} className="p-0.5 hover:bg-rd-list-hover rounded text-rd-text-dim hover:text-rd-text transition-colors">
+              <Icon name="plus" size={14} />
+            </button>
+          }
+        >
           <TreeView 
             nodes={explorerNodes}
             selectedId={activeTabPerGroup['main-group']}
             onSelect={(node) => setActiveTabPerGroup(prev => ({ ...prev, 'main-group': node.id }))}
-            indent={1}
           />
-        </div>
+        </SideBarSection>
       )}
       {activeSideBar === 'ast' && (
         <div className="p-2 overflow-x-auto">

@@ -25,13 +25,18 @@ import {
   AlertTriangle,
   Info,
   Wifi,
+  RefreshCw,
   FolderOpen,
+  FolderPlus,
+  FoldVertical,
 } from 'lucide-react';
 
 export type IconName =
   | 'file'
   | 'folder'
   | 'folderOpen'
+  | 'folderPlus'
+  | 'fold'
   | 'search'
   | 'git'
   | 'debug'
@@ -54,7 +59,8 @@ export type IconName =
   | 'clock'
   | 'alertTriangle'
   | 'info'
-  | 'wifi';
+  | 'wifi'
+  | 'refresh';
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
@@ -77,12 +83,15 @@ const icons: Record<IconName, React.ElementType> = {
   cpu: Cpu,
   activity: Activity,
   plus: Plus,
+  folderPlus: FolderPlus,
+  fold: FoldVertical,
   network: Network,
   shield: Shield,
   clock: Clock,
   alertTriangle: AlertTriangle,
   info: Info,
   wifi: Wifi,
+  refresh: RefreshCw,
 };
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
