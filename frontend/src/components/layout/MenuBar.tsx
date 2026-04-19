@@ -6,7 +6,6 @@ import { TreeNode } from '../ui/TreeView';
 import { CreditsModal } from './modals/CreditsModal';
 import { PreferencesModal } from './modals/PreferencesModal';
 import { CredentialsModal } from './modals/CredentialsModal';
-import { ConnectTerminal } from '../../../wailsjs/go/main/App';
 import { useTranslation } from 'react-i18next';
 
 interface MenuBarProps {
@@ -58,11 +57,9 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       const hostId = HostsService.parseId(node.id);
       if (hostId === undefined) return;
       
-      const sessionId = await ConnectTerminal(hostId, '', '');
-      EventsEmit('app:open-terminal', { 
-        sessionId, 
-        name: node.label,
+      EventsEmit('app:connect', {
         hostId,
+        name: node.label,
         icon: node.icon || 'terminal'
       });
     } catch (err) {

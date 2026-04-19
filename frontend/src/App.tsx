@@ -37,8 +37,10 @@ interface OpenTab {
 
 import { EventsOn, EventsOff, LogError } from '../wailsjs/runtime/runtime';
 import { useEffect } from 'react';
-import { CloseTerminal, ConnectTerminal, GetHostWithCredentials } from '../wailsjs/go/main/App';
+import { CloseTerminal, GetHostWithCredentials, AbortConnection } from '../wailsjs/go/main/App';
 import { ProtocolConnectModal, ProtocolRequestData } from './components/layout/modals/ProtocolConnectModal';
+import { ConnectionLogModal } from './components/layout/modals/ConnectionLogModal';
+import { useTerminalConnection } from './hooks/useTerminalConnection';
 
 function App() {
   // State
@@ -98,6 +100,14 @@ function App() {
     setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
   };
 
+  // Connection Hook
+  const { 
+    state: connState, 
+    connect: startConnection, 
+    abort: abortConnection, 
+    close: closeConnModal 
+  } = useTerminalConnection((data) => handleOpenTerminal(data));
+
   // Listen for terminal open events
   useEffect(() => {
     const handleHostUpdated = (updatedHost: db.Host) => {
@@ -120,13 +130,7 @@ function App() {
         if (match && match.host) {
           // Se l'utente non è specificato nel link OR è uguale a quello salvato -> connetti subito
           if (!parts.user || parts.user === match.username) {
-            const sessionId = await ConnectTerminal(match.host.id, '', '');
-            handleOpenTerminal({ 
-              sessionId, 
-              name: match.host.label, 
-              hostId: match.host.id, 
-              icon: match.host.icon as IconName 
-            });
+            startConnection(match.host.id, match.host.label, match.host.icon as IconName, '', '');
             return;
           }
 
@@ -138,16 +142,9 @@ function App() {
             savedUsername: match.username
           });
         } else {
-          // Nessun host trovato: connessione veloce immediata (per ora)
-          // Nota: lo 0 come hostID indica una connessione non persistita
+          // Nessun host trovato: connessione veloce immediata
           const sessionName = parts.user ? `${parts.user}@${parts.host}` : parts.host;
-          const sessionId = await ConnectTerminal(0, parts.user || '', parts.password || '');
-          handleOpenTerminal({ 
-            sessionId, 
-            name: sessionName, 
-            hostId: 0, 
-            icon: 'terminal' 
-          });
+          startConnection(0, sessionName, 'terminal', parts.user || '', parts.password || '');
         }
       } catch (err) {
         LogError(`Failed to handle protocol request: ${err}`);
@@ -157,10 +154,17 @@ function App() {
     EventsOn('app:open-terminal', handleOpenTerminal);
     EventsOn('app:host-updated', handleHostUpdated);
     EventsOn('app:protocol-request', handleProtocolRequest);
+
+    // Global listener for connection requests from other components
+    const offConnect = EventsOn('app:connect', (data: { hostId: number, name: string, icon: IconName, user?: string, pass?: string }) => {
+      startConnection(data.hostId, data.name, data.icon, data.user || '', data.pass || '');
+    });
+
     return () => {
       EventsOff('app:open-terminal');
       EventsOff('app:host-updated');
       EventsOff('app:protocol-request');
+      offConnect();
     };
   }, []);
 
@@ -326,18 +330,20 @@ function App() {
           const pass = useSaved ? '' : (data.password || '');
           
           try {
-            const sessionId = await ConnectTerminal(existingHost.id, user, pass);
-            handleOpenTerminal({
-              sessionId,
-              name: existingHost.label,
-              hostId: existingHost.id,
-              icon: existingHost.icon as IconName
-            });
+            startConnection(existingHost.id, existingHost.label, existingHost.icon as IconName, user, pass);
           } catch (err) {
             console.error(err);
           }
           setProtocolRequest(prev => ({ ...prev, isOpen: false }));
         }}
+      />
+      <ConnectionLogModal
+        isOpen={connState.isOpen}
+        onClose={closeConnModal}
+        onAbort={abortConnection}
+        hostName={connState.hostName}
+        entries={connState.entries}
+        isConnecting={connState.isConnecting}
       />
     </DndProvider>
   );

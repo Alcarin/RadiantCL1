@@ -11,7 +11,7 @@ import { CredentialsModal } from './modals/CredentialsModal';
 import { db } from '../../../wailsjs/go/models';
 import { getDndManager } from '../../lib/dnd';
 import { EventsEmit, EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
-import { ConnectTerminal, GetActiveConnections } from '../../../wailsjs/go/main/App';
+import { GetActiveConnections } from '../../../wailsjs/go/main/App';
 import { useTranslation } from 'react-i18next';
 
 interface ActionButtonProps {
@@ -165,14 +165,15 @@ export const ConnectionsView: React.FC = () => {
        const hostId = HostsService.parseId(node.id);
        if (hostId === undefined) return;
        
-       const sessionId = await ConnectTerminal(hostId, username, password);
-       // Notifica l'App di aprire un nuovo tab per questo sessionId
-       EventsEmit('app:open-terminal', { 
-         sessionId, 
-         name: node.label,
+       // Emette l'evento che verrà catturato da App.tsx (che usa useTerminalConnection)
+       EventsEmit('app:connect', {
          hostId,
-         icon: node.icon || 'terminal'
+         name: node.label,
+         icon: node.icon || 'terminal',
+         user: username,
+         pass: password
        });
+       
        setLoginModal({ isOpen: false });
      } catch (err) {
        const errorMessage = err instanceof Error ? err.message : String(err);

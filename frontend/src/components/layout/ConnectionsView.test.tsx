@@ -4,6 +4,8 @@ import { ConnectionsView } from './ConnectionsView';
 import * as AppBindings from '../../../wailsjs/go/main/App';
 import * as Runtime from '../../../wailsjs/runtime/runtime';
 import React from 'react';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../../i18n/config';
 
 // Mock dependecies that might cause issues in jsdom
 vi.mock('../../lib/hosts_service', () => ({
@@ -18,6 +20,25 @@ vi.mock('../ui/TreeView', () => ({
   TreeView: () => <div data-testid="tree-view">TreeView Mock</div>,
 }));
 
+vi.mock('../../../wailsjs/go/main/App', () => ({
+  GetActiveConnections: vi.fn(),
+  ConnectTerminal: vi.fn(),
+}));
+
+vi.mock('../../../wailsjs/runtime/runtime', () => ({
+  EventsOn: vi.fn(() => () => {}),
+  EventsOff: vi.fn(),
+  EventsEmit: vi.fn(),
+}));
+
+const renderWithI18n = (ui: React.ReactElement) => {
+  return render(
+    <I18nextProvider i18n={i18n}>
+      {ui}
+    </I18nextProvider>
+  );
+};
+
 describe('ConnectionsView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +51,7 @@ describe('ConnectionsView', () => {
     
     vi.mocked(AppBindings.GetActiveConnections).mockResolvedValue(mockConnections);
     
-    render(<ConnectionsView />);
+    renderWithI18n(<ConnectionsView />);
     
     await waitFor(() => {
       expect(AppBindings.GetActiveConnections).toHaveBeenCalled();
@@ -40,7 +61,7 @@ describe('ConnectionsView', () => {
   it('mostra il messaggio di nessuna connessione se la lista è vuota', async () => {
     vi.mocked(AppBindings.GetActiveConnections).mockResolvedValue([]);
     
-    render(<ConnectionsView />);
+    renderWithI18n(<ConnectionsView />);
     
     await waitFor(() => {
       expect(screen.getByText('No active connections')).toBeInTheDocument();
@@ -48,7 +69,7 @@ describe('ConnectionsView', () => {
   });
 
   it('si sottoscrive all\'evento di aggiornamento sessioni', async () => {
-    render(<ConnectionsView />);
+    renderWithI18n(<ConnectionsView />);
     
     expect(Runtime.EventsOn).toHaveBeenCalledWith('terminal:sessions-updated', expect.any(Function));
   });

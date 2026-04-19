@@ -102,140 +102,199 @@ func (s *TerminalService) logError(format string, args ...interface{}) {
 	}
 }
 
-// ConnectSSH avvia una connessione SSH
-func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string) error {
-	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
-			ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
-				answers := make([]string, len(questions))
-				for i := range questions {
-					answers[i] = password
-				}
-				return answers, nil
-			}),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	addr := fmt.Sprintf("%s:%d", address, port)
-	client, err := ssh.Dial("tcp", addr, config)
-	if err != nil {
-		return err
-	}
-
-	session, err := client.NewSession()
-	if err != nil {
-		client.Close()
-		return err
-	}
-
-	// Richiedi un terminale PTY
-	modes := ssh.TerminalModes{
-		ssh.ECHO:          1,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	}
-
-	if err := session.RequestPty("xterm-256color", 80, 24, modes); err != nil {
-		session.Close()
-		client.Close()
-		return err
-	}
-
-	stdin, err := session.StdinPipe()
-	if err != nil {
-		return err
-	}
-
-	stdout, err := session.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderr, err := session.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := session.Shell(); err != nil {
-		return err
-	}
-
+// ConnectSSH avvia una connessione SSH con feedback granulare
+func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string) {
+	// 1. Crea la sessione in stato connecting
 	ctx, cancel := context.WithCancel(s.ctx)
 	ts := &TerminalSession{
-		ID:         id,
-		Type:       "ssh",
-		Name:       name,
-		Address:    address,
-		SSHClient:  client,
-		SSHSession: session,
-		Writer:     stdin,
-		Ctx:        ctx,
-		Cancel:     cancel,
-		Status:     "connected",
-		Icon:       icon,
-		HostID:     hostID,
+		ID:      id,
+		Type:    "ssh",
+		Name:    name,
+		Address: address,
+		Ctx:     ctx,
+		Cancel:  cancel,
+		Status:  "connecting",
+		Icon:    icon,
+		HostID:  hostID,
 	}
-
-	// Setup logging
-	s.setupLogging(ts)
 
 	s.mu.Lock()
 	s.sessions[id] = ts
 	s.mu.Unlock()
-
 	s.emit("terminal:sessions-updated")
 
-	// Avvia i loop di lettura
-	go s.readLoop(ts, stdout)
-	go s.readLoop(ts, stderr)
-
-	// Monitora la chiusura effettiva della sessione
 	go func() {
-		session.Wait()
-		s.CloseSession(id)
-	}()
+		defer func() {
+			if r := recover(); r != nil {
+				s.logError("Recovered from panic in ConnectSSH: %v", r)
+				s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Panic: %v", r)})
+			}
+		}()
 
-	return nil
+		config := &ssh.ClientConfig{
+			User: user,
+			Auth: []ssh.AuthMethod{
+				ssh.Password(password),
+				ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
+					answers := make([]string, len(questions))
+					for i := range questions {
+						answers[i] = password
+					}
+					return answers, nil
+				}),
+			},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         10 * time.Second,
+		}
+
+		addr := fmt.Sprintf("%s:%d", address, port)
+
+		// STEP: TCP Connection
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "tcp"})
+		
+		dialer := net.Dialer{Timeout: 10 * time.Second}
+		conn, err := dialer.DialContext(ctx, "tcp", addr)
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("TCP Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+		ts.Conn = conn
+
+		// STEP: Handshake
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "handshake"})
+		sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("SSH Handshake Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+
+		// STEP: Authentication
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "auth"})
+		client := ssh.NewClient(sshConn, chans, reqs)
+		ts.SSHClient = client
+
+		// STEP: Session Creation
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "encrypt"}) // "Cifratura canale completata" (metaforicamente qui)
+		session, err := client.NewSession()
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("SSH Session Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+		ts.SSHSession = session
+
+		// STEP: PTY/Shell
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "pty"})
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          1,
+			ssh.TTY_OP_ISPEED: 14400,
+			ssh.TTY_OP_OSPEED: 14400,
+		}
+
+		if err := session.RequestPty("xterm-256color", 80, 24, modes); err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("PTY Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+
+		stdin, err := session.StdinPipe()
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Stdin Pipe Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+		ts.Writer = stdin
+
+		stdout, err := session.StdoutPipe()
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Stdout Pipe Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+
+		stderr, err := session.StderrPipe()
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Stderr Pipe Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "shell"})
+		if err := session.Shell(); err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Shell Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
+
+		// FINISHED
+		ts.mu.Lock()
+		ts.Status = "connected"
+		ts.mu.Unlock()
+
+		// Setup logging
+		s.setupLogging(ts)
+
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "ready"})
+		s.emit("terminal:sessions-updated")
+
+		// Avvia i loop di lettura
+		go s.readLoop(ts, stdout)
+		go s.readLoop(ts, stderr)
+
+		// Monitora la chiusura effettiva della sessione
+		go func() {
+			session.Wait()
+			s.CloseSession(id)
+		}()
+	}()
 }
 
-// ConnectTelnet avvia una connessione Telnet con negoziazione base
-func (s *TerminalService) ConnectTelnet(id string, hostID int64, name string, icon string, address string, port int) error {
-	addr := fmt.Sprintf("%s:%d", address, port)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return err
-	}
-
+// ConnectTelnet avvia una connessione Telnet con feedback
+func (s *TerminalService) ConnectTelnet(id string, hostID int64, name string, icon string, address string, port int) {
 	ctx, cancel := context.WithCancel(s.ctx)
 	ts := &TerminalSession{
 		ID:      id,
 		Type:    "telnet",
 		Name:    name,
 		Address: address,
-		Conn:    conn,
-		Writer:  conn,
 		Ctx:     ctx,
 		Cancel:  cancel,
-		Status:  "connected",
+		Status:  "connecting",
 		Icon:    icon,
 		HostID:  hostID,
 	}
 
-	// Setup logging
-	s.setupLogging(ts)
-
 	s.mu.Lock()
 	s.sessions[id] = ts
 	s.mu.Unlock()
-
 	s.emit("terminal:sessions-updated")
 
-	go s.telnetReadLoop(ts)
+	go func() {
+		addr := fmt.Sprintf("%s:%d", address, port)
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "tcp"})
+		
+		dialer := net.Dialer{Timeout: 10 * time.Second}
+		conn, err := dialer.DialContext(ctx, "tcp", addr)
+		if err != nil {
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("TCP Error: %v", err)})
+			s.RemoveSession(id)
+			return
+		}
 
-	return nil
+		ts.Conn = conn
+		ts.Writer = conn
+		ts.Status = "connected"
+
+		// Setup logging
+		s.setupLogging(ts)
+
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "ready"})
+		s.emit("terminal:sessions-updated")
+
+		go s.telnetReadLoop(ts)
+	}()
 }
 
 func (s *TerminalService) readLoop(ts *TerminalSession, r io.Reader) {

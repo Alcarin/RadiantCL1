@@ -263,25 +263,45 @@ func (a *App) MoveItem(itemType string, id int64, targetFolderID int64, sortOrde
 }
 
 // ConnectTerminal avvia una connessione terminale per un host.
-// Se l'host ha un profilo di credenziali associato, lo usa automaticamente.
-// Altrimenti usa username/password passati dal frontend (se presenti).
-func (a *App) ConnectTerminal(hostID int64, username string, password string) (string, error) {
+// Il sessionID viene generato dal frontend per assicurare la ricezione degli eventi fin dal primo step.
+func (a *App) ConnectTerminal(sessionID string, hostID int64, username string, password string) error {
 	if a.dbManager == nil {
-		return "", fmt.Errorf("database not initialized")
+		return fmt.Errorf("database not initialized")
 	}
 
-	// 1. Recupera dati host
 	var h db.Host
-	err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port, credential_id FROM hosts WHERE id = ?", hostID).Scan(
-		&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.CredentialID)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch host: %w", err)
+	if hostID > 0 {
+		// Recupera dati host persistito
+		err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port, credential_id FROM hosts WHERE id = ?", hostID).Scan(
+			&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.CredentialID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch host: %w", err)
+		}
+	} else {
+		// Connessione temporanea (o hostID non valido)
+		// I dettagli devono essere stati configurati esternamente o estratti dall'URL
+		// In questo contesto, se hostID <= 0, ci aspettiamo che address/type siano gestiti diversamente.
+		// Tuttavia, la firma originale prevedeva hostID. Se hostID è 0, stiamo aprendo una connessione ad hoc.
+		// Per semplicità, in questo caso temporaneo usiamo valori di default o parametri passati.
+		// TODO: Gestire meglio hostID=0 (es. passando l'oggetto Host completo)
+		h = db.Host{
+			ID:      0,
+			Label:   username,
+			Icon:    "terminal",
+			Address: username, // In caso di hostID=0, usiamo username come address temporaneo (hack per connessioni veloci)
+			Type:    "ssh",
+			Port:    22,
+		}
+		if strings.Contains(username, ":") {
+			parts := strings.Split(username, ":")
+			h.Address = parts[0]
+			fmt.Sscanf(parts[1], "%d", &h.Port)
+		}
 	}
 
 	finalUser := username
 	finalPass := password
 
-	// 2. Se l'utente non è fornito esplicitamente, usa il profilo salvato (se presente)
 	if finalUser == "" && h.CredentialID != nil {
 		savedUser, savedPass, err := a.vaultService.GetPassword(*h.CredentialID)
 		if err == nil {
@@ -290,20 +310,18 @@ func (a *App) ConnectTerminal(hostID int64, username string, password string) (s
 		}
 	}
 
-	sessionID := fmt.Sprintf("term-%d-%d", hostID, os.Getpid())
-	
 	if h.Type == "ssh" {
-		err = a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, finalUser, finalPass)
+		a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, finalUser, finalPass)
 	} else {
-		// Telnet ignora user/pass passati dalla modale poiché è interattivo nel terminale
-		err = a.terminalService.ConnectTelnet(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port)
+		a.terminalService.ConnectTelnet(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port)
 	}
 
-	if err != nil {
-		return "", err
-	}
+	return nil
+}
 
-	return sessionID, nil
+// AbortConnection interrompe una connessione in corso o una sessione attiva
+func (a *App) AbortConnection(sessionID string) {
+	a.terminalService.RemoveSession(sessionID)
 }
 
 // GetCredentials restituisce l'elenco dei profili di credenziali

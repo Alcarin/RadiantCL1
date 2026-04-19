@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Connection Progress Modal**: New real-time visual feedback for SSH and Telnet connections, providing granular log steps (TCP, Handshake, Authentication, etc.).
+- **Asynchronous Protocol Handlers**: Refactored backend connection logic to support background execution and progress events for improved UI responsiveness.
+- **Connection Abort Support**: Added the ability to prematurely terminate pending or active terminal connections directly from the progress modal.
 - **OS Protocol Handlers**: Integrated support for `ssh://` and `telnet://` URIs, allowing the application to be launched directly from external links.
 - **Cross-Platform Registration**: Implemented registration handlers for Windows Registry, Linux `.desktop` files, and macOS bundle integration.
 - **Single Instance Support**: Configured Wails `SingleInstanceLock` to route protocol requests to an already running instance instead of spawning duplicates.
@@ -60,7 +63,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drag and Drop / Mouse Control**: Resolved runtime conflicts and crashes in the DND library (react-arborist vs react-mosaic-component).
 - **Context Switching**: Fixed stability issues when switching between different terminal or editor contexts.
 - **UI Contrast**: Implemented dynamic text color calculation (`oklch`) for Radiant Gold elements to ensure legibility on accent backgrounds.
-
----
 
 ---

@@ -10,6 +10,7 @@ import { I18nextProvider } from 'react-i18next';
 vi.mock('../../../lib/settings_service', () => ({
   SettingsService: {
     saveLanguage: vi.fn(() => Promise.resolve()),
+    getProtocolStatus: vi.fn(() => Promise.resolve({ registered: false, pathMatch: false, currentPath: '', details: '' })),
   }
 }));
 

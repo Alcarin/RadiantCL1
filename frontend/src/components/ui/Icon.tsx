@@ -74,6 +74,7 @@ import {
   Trash2,
   ShieldOff,
   ShieldCheck,
+  Check,
 } from 'lucide-react';
 
 export type IconName =
@@ -152,7 +153,9 @@ export type IconName =
   | 'trash'
   | 'shieldOff'
   | 'shieldCheck'
-  | 'refreshCw';
+  | 'refreshCw'
+  | 'check'
+  | 'loading';
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
@@ -231,6 +234,8 @@ const icons: Record<IconName, React.ElementType> = {
   shieldOff: ShieldOff,
   shieldCheck: ShieldCheck,
   refreshCw: RefreshCw,
+  check: Check,
+  loading: RefreshCw,
 };
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
