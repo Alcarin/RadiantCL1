@@ -124,17 +124,27 @@ function App() {
     };
 
     const handleProtocolRequest = async (parts: ProtocolRequestData) => {
+      console.log("[App] Protocol Request Received:", parts);
       try {
         const match = await GetHostWithCredentials(parts.host);
         
         if (match && match.host) {
           // Se l'utente non è specificato nel link OR è uguale a quello salvato -> connetti subito
           if (!parts.user || parts.user === match.username) {
-            startConnection(match.host.id, match.host.label, match.host.icon as IconName, '', '');
+            startConnection(
+              match.host.id, 
+              match.host.label, 
+              match.host.icon as IconName, 
+              match.host.address, 
+              match.host.port, 
+              match.host.type,
+              '', 
+              ''
+            );
             return;
           }
 
-          // Altrimenti chiedi all'utente
+          // Altrimenti chiedi all'utente tramite modale
           setProtocolRequest({
             isOpen: true,
             data: parts,
@@ -143,8 +153,27 @@ function App() {
           });
         } else {
           // Nessun host trovato: connessione veloce immediata
-          const sessionName = parts.user ? `${parts.user}@${parts.host}` : parts.host;
-          startConnection(0, sessionName, 'terminal', parts.user || '', parts.password || '');
+          // Usiamo delle variabili di appoggio per gestire eventuali discrepanze di case tra Go e JS
+          const p_host = parts.host || (parts as any).Host || "";
+          const p_port = parts.port || (parts as any).Port || (parts.protocol === 'telnet' ? 23 : 22);
+          const p_user = parts.user || (parts as any).User || "";
+          const p_proto = parts.protocol || (parts as any).Protocol || 'ssh';
+          const p_pass = parts.password || (parts as any).Password || "";
+
+          const sessionName = p_user ? `${p_user}@${p_host}` : p_host;
+          
+          console.log("[App] Starting Ad-hoc Connection:", { p_host, p_port, p_proto, p_user });
+
+          startConnection(
+            0, 
+            sessionName, 
+            'terminal', 
+            p_host, 
+            p_port, 
+            p_proto, 
+            p_user, 
+            p_pass
+          );
         }
       } catch (err) {
         LogError(`Failed to handle protocol request: ${err}`);
@@ -156,8 +185,26 @@ function App() {
     EventsOn('app:protocol-request', handleProtocolRequest);
 
     // Global listener for connection requests from other components
-    const offConnect = EventsOn('app:connect', (data: { hostId: number, name: string, icon: IconName, user?: string, pass?: string }) => {
-      startConnection(data.hostId, data.name, data.icon, data.user || '', data.pass || '');
+    const offConnect = EventsOn('app:connect', (data: { 
+      hostId: number, 
+      name: string, 
+      icon: IconName, 
+      address: string,
+      port: number,
+      type: string,
+      user?: string, 
+      pass?: string 
+    }) => {
+      startConnection(
+        data.hostId, 
+        data.name, 
+        data.icon, 
+        data.address, 
+        data.port, 
+        data.type, 
+        data.user || '', 
+        data.pass || ''
+      );
     });
 
     return () => {
@@ -326,11 +373,14 @@ function App() {
           if (!protocolRequest.data || !protocolRequest.existingHost) return;
           
           const { data, existingHost } = protocolRequest;
+          const address = useSaved ? existingHost.address : data.host;
+          const port = useSaved ? existingHost.port : data.port;
+          const type = useSaved ? existingHost.type : data.protocol;
           const user = useSaved ? '' : (data.user || '');
           const pass = useSaved ? '' : (data.password || '');
           
           try {
-            startConnection(existingHost.id, existingHost.label, existingHost.icon as IconName, user, pass);
+            startConnection(existingHost.id, existingHost.label, existingHost.icon as IconName, address, port, type, user, pass);
           } catch (err) {
             console.error(err);
           }

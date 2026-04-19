@@ -56,8 +56,8 @@ func (a *App) startup(ctx context.Context) {
 
 	// Check if started with a URL
 	if len(os.Args) > 1 {
-		arg := os.Args[1]
-		if strings.HasPrefix(arg, "ssh://") || strings.HasPrefix(arg, "telnet://") {
+		arg := strings.Trim(strings.TrimSpace(os.Args[1]), "\"")
+		if strings.HasPrefix(arg, "ssh:") || strings.HasPrefix(arg, "telnet:") {
 			go func() {
 				// Attendi che il frontend sia pronto prima di gestire l'URL
 				time.Sleep(2 * time.Second)
@@ -263,8 +263,8 @@ func (a *App) MoveItem(itemType string, id int64, targetFolderID int64, sortOrde
 }
 
 // ConnectTerminal avvia una connessione terminale per un host.
-// Il sessionID viene generato dal frontend per assicurare la ricezione degli eventi fin dal primo step.
-func (a *App) ConnectTerminal(sessionID string, hostID int64, username string, password string) error {
+// Se hostID > 0, recupera i dettagli dal database. Altrimenti usa i parametri passati (connessione ad-hoc).
+func (a *App) ConnectTerminal(sessionID string, hostID int64, address string, port int, protocolType string, username string, password string) error {
 	if a.dbManager == nil {
 		return fmt.Errorf("database not initialized")
 	}
@@ -279,23 +279,26 @@ func (a *App) ConnectTerminal(sessionID string, hostID int64, username string, p
 		}
 	} else {
 		// Connessione temporanea (o hostID non valido)
-		// I dettagli devono essere stati configurati esternamente o estratti dall'URL
-		// In questo contesto, se hostID <= 0, ci aspettiamo che address/type siano gestiti diversamente.
-		// Tuttavia, la firma originale prevedeva hostID. Se hostID è 0, stiamo aprendo una connessione ad hoc.
-		// Per semplicità, in questo caso temporaneo usiamo valori di default o parametri passati.
-		// TODO: Gestire meglio hostID=0 (es. passando l'oggetto Host completo)
 		h = db.Host{
 			ID:      0,
-			Label:   username,
+			Label:   address,
 			Icon:    "terminal",
-			Address: username, // In caso di hostID=0, usiamo username come address temporaneo (hack per connessioni veloci)
-			Type:    "ssh",
-			Port:    22,
+			Address: address,
+			Type:    protocolType,
+			Port:    port,
 		}
-		if strings.Contains(username, ":") {
-			parts := strings.Split(username, ":")
-			h.Address = parts[0]
-			fmt.Sscanf(parts[1], "%d", &h.Port)
+		if h.Type == "" {
+			h.Type = "ssh" // Default
+		}
+		if h.Port == 0 {
+			if h.Type == "ssh" {
+				h.Port = 22
+			} else {
+				h.Port = 23
+			}
+		}
+		if h.Label == "" {
+			h.Label = h.Address
 		}
 	}
 
@@ -452,10 +455,15 @@ func (a *App) UnregisterProtocolHandlers() error {
 func (a *App) HandleSecondInstance(data options.SecondInstanceData) {
 	if len(data.Args) > 0 {
 		for _, arg := range data.Args {
-			if strings.HasPrefix(arg, "ssh://") || strings.HasPrefix(arg, "telnet://") {
+			// Pulizia preventiva: rimuove spazi e virgolette
+			cleanArg := strings.TrimSpace(arg)
+			cleanArg = strings.Trim(cleanArg, "\"")
+			cleanArg = strings.Trim(cleanArg, "'")
+
+			if strings.HasPrefix(cleanArg, "ssh:") || strings.HasPrefix(cleanArg, "telnet:") {
 				runtime.WindowUnminimise(a.ctx)
 				runtime.WindowShow(a.ctx)
-				a.HandleURL(arg)
+				a.HandleURL(cleanArg)
 				break
 			}
 		}
@@ -470,8 +478,13 @@ func (a *App) HandleURL(rawURL string) error {
 		return err
 	}
 
-	// Emette l'evento per il frontend invece di connettersi direttamente
-	runtime.EventsEmit(a.ctx, "app:protocol-request", parts)
+	// Emette l'evento come mappa esplicita per evitare problemi di Case-Sensitivity in JS
+	runtime.EventsEmit(a.ctx, "app:protocol-request", map[string]interface{}{
+		"protocol": parts.Protocol,
+		"host":     parts.Host,
+		"port":     parts.Port,
+		"user":     parts.User,
+		"password": parts.Password,
+	})
 	return nil
 }
-

@@ -33,7 +33,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     isConnecting: false,
   });
 
-  const connect = useCallback(async (hostId: number, name: string, icon: IconName, username: string = '', password: string = '') => {
+  const connect = useCallback(async (hostId: number, name: string, icon: IconName, address: string = '', port: number = 0, protocolType: string = 'ssh', username: string = '', password: string = '') => {
     // Generiamo l'ID qui sul frontend per poter ascoltare gli eventi fin dal primo step
     const sessionId = `term-${hostId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -49,7 +49,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     }));
 
     try {
-      await ConnectTerminal(sessionId, hostId, username, password);
+      await ConnectTerminal(sessionId, hostId, address, port, protocolType, username, password);
     } catch (err) {
       setState(prev => ({
         ...prev,

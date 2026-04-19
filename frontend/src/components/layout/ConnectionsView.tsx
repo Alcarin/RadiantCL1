@@ -170,6 +170,9 @@ export const ConnectionsView: React.FC = () => {
          hostId,
          name: node.label,
          icon: node.icon || 'terminal',
+         address: node.data.address,
+         port: node.data.port,
+         type: node.data.type,
          user: username,
          pass: password
        });

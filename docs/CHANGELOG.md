@@ -39,8 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **UI Localization Refactoring**: Migrated all hardcoded strings in MenuBar, SideBar, StatusBar, and Modals to dynamic i18n keys.
 - **Internationalization Consistency**: Standardized the `credentialManager` translation key across all supported languages (EN, IT, ES, FR, DE) within the `common` namespace.
+- **Protocol Data Consistency**: Migrated protocol handler event emission to explicit string maps to resolve Go/JS case-sensitivity conflicts.
+- **Connection Synchronization**: Introduced a 250ms delay in connection start to ensure the frontend listener is ready for progress events.
 - **Credits Expansion**: Fully translated technology stack descriptions and legal notices across all supported languages.
 - **Menu Snappiness**: Optimized event handling to close menus instantly upon selection, ensuring a responsive feel during async connection starts.
 - **Visual Branding**: Switched primary accent color to "Radiant Gold" (Yellow) across the entire application UI.
@@ -56,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Type Compatibility**: Resolved critical compiler errors between `i18next` and legacy TypeScript by upgrading the project to TypeScript 5.
 - **UI Regressions**: Fixed missing state hooks and type mismatches in `ConnectionsView.tsx` and `App.tsx` during the translation refactor.
 - **Modal Window Interaction**: Resolved an issue where double-clicking within modals (Preferences, Credential Manager) would trigger window maximization by implementing event bubbling suppression.
+- **Protocol Handler Failures**: Fixed a critical bug where Windows quotes around URIs (`"ssh://..."`) prevented protocol links from being recognized.
+- **Ad-hoc Connection Recovery**: Resolved an issue where ad-hoc connection parameters were lost during the event transmission from backend to frontend.
+- **Empty Address Errors**: Fixed "Host address is empty" failures by implementing ultra-robust URI parsing and argument cleaning.
 - **Menu Readability**: Removed transparency from top and context menus, using solid colors to prevent background text interference.
 - **CSS Variable Cleanup**: Resolved invalid `rd-bg-main` references in TreeView and status indicators, ensuring consistent theme rendering.
 - **JSON Unmarshalling**: Fixed a critical bug where `folderId` was sent as a string instead of an int64, preventing host updates.

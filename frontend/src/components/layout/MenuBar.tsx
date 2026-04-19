@@ -60,7 +60,10 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       EventsEmit('app:connect', {
         hostId,
         name: node.label,
-        icon: node.icon || 'terminal'
+        icon: node.icon || 'terminal',
+        address: node.data.address,
+        port: node.data.port,
+        type: node.data.type,
       });
     } catch (err) {
       console.error("Connection failed from menu:", err);

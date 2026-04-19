@@ -104,6 +104,11 @@ func (s *TerminalService) logError(format string, args ...interface{}) {
 
 // ConnectSSH avvia una connessione SSH con feedback granulare
 func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string) {
+	if address == "" {
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Host address is empty (Received: '%s'). Please verify the host configuration in the database.", address)})
+		return
+	}
+
 	// 1. Crea la sessione in stato connecting
 	ctx, cancel := context.WithCancel(s.ctx)
 	ts := &TerminalSession{
@@ -150,6 +155,8 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 		addr := fmt.Sprintf("%s:%d", address, port)
 
 		// STEP: TCP Connection
+		// Piccolo delay per permettere al frontend di essere pronto ad ascoltare
+		time.Sleep(250 * time.Millisecond)
 		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "tcp"})
 		
 		dialer := net.Dialer{Timeout: 10 * time.Second}
@@ -253,6 +260,11 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 
 // ConnectTelnet avvia una connessione Telnet con feedback
 func (s *TerminalService) ConnectTelnet(id string, hostID int64, name string, icon string, address string, port int) {
+	if address == "" {
+		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Host address is empty (Received: '%s'). Check your connection URL or parameters.", address)})
+		return
+	}
+
 	ctx, cancel := context.WithCancel(s.ctx)
 	ts := &TerminalSession{
 		ID:      id,
@@ -273,6 +285,9 @@ func (s *TerminalService) ConnectTelnet(id string, hostID int64, name string, ic
 
 	go func() {
 		addr := fmt.Sprintf("%s:%d", address, port)
+		
+		// Piccolo delay per permettere al frontend di essere pronto ad ascoltare
+		time.Sleep(250 * time.Millisecond)
 		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "tcp"})
 		
 		dialer := net.Dialer{Timeout: 10 * time.Second}
