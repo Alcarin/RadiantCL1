@@ -53,7 +53,8 @@
     "mainBranch": "main*",
     "spaces": "Leerzeichen: 2",
     "encoding": "UTF-8",
-    "file": "Datei"
+    "file": "Datei",
+    "credentialManager": "Anmeldeinformationsverwaltung"
   },
   "modals": {
     "editHost": "Host bearbeiten",

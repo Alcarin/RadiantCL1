@@ -5,6 +5,7 @@ import { HostsService } from '../../lib/hosts_service';
 import { TreeNode } from '../ui/TreeView';
 import { CreditsModal } from './modals/CreditsModal';
 import { PreferencesModal } from './modals/PreferencesModal';
+import { CredentialsModal } from './modals/CredentialsModal';
 import { ConnectTerminal } from '../../../wailsjs/go/main/App';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +19,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
   const [hosts, setHosts] = useState<TreeNode[]>([]);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  const [isCredentialsOpen, setIsCredentialsOpen] = useState(false);
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +117,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       label: t('common.file'),
       items: [
         { label: t('common.openFile') || 'Open File...', icon: 'file' as IconName, action: () => { setActiveMenu(null); onOpenFile?.(); } },
+        { separator: true, label: t('common.credentialManager') || 'Credential Manager', icon: 'keyRound' as IconName, action: () => { setActiveMenu(null); setIsCredentialsOpen(true); } },
         { separator: true, label: t('common.preferences'), icon: 'settings' as IconName, action: () => { setActiveMenu(null); setIsPreferencesOpen(true); } },
         { separator: true, label: t('common.exit') || 'Exit', icon: 'close' as IconName, action: () => handleClose() },
       ]
@@ -207,6 +210,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
 
       <CreditsModal isOpen={isCreditsOpen} onClose={() => setIsCreditsOpen(false)} />
       <PreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
+      <CredentialsModal isOpen={isCredentialsOpen} onClose={() => setIsCredentialsOpen(false)} />
     </div>
   );
 };

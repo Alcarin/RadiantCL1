@@ -44,15 +44,16 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" 
+        className="absolute inset-0 bg-black/50 backdrop-blur-[1px] no-drag" 
         onClick={onClose}
       />
       
       {/* Modal Container */}
       <div 
         ref={modalRef}
+        onDoubleClick={(e) => e.stopPropagation()}
         className={cn(
-          "relative bg-rd-sidebar border border-rd-border shadow-2xl flex flex-col w-full animate-in fade-in zoom-in duration-200",
+          "relative bg-rd-sidebar border border-rd-border shadow-2xl flex flex-col w-full animate-in fade-in zoom-in duration-200 no-drag",
           width
         )}
       >

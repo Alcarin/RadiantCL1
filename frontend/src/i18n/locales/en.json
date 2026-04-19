@@ -53,7 +53,8 @@
     "mainBranch": "main*",
     "spaces": "Spaces: 2",
     "encoding": "UTF-8",
-    "file": "File"
+    "file": "File",
+    "credentialManager": "Credential Manager"
   },
   "modals": {
     "editHost": "Edit Host",
