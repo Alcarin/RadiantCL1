@@ -5,7 +5,7 @@ import { Icon } from '../../ui/Icon';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string, savePassword: boolean) => void;
   hostName: string;
   error?: string | null;
   isConnecting?: boolean;
@@ -21,11 +21,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [savePassword, setSavePassword] = useState(true);
 
   const handleLogin = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (isConnecting) return;
-    onLogin(username, password);
+    onLogin(username, password, savePassword);
   };
 
   return (
@@ -79,6 +80,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             placeholder="••••••••"
           />
         </div>
+
+        <div className="flex items-center gap-2 pt-1 pb-2">
+          <input 
+            type="checkbox" 
+            id="save-password"
+            checked={savePassword}
+            onChange={(e) => setSavePassword(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-rd-border bg-white/5 text-rd-accent focus:ring-rd-accent focus:ring-offset-0"
+          />
+          <label htmlFor="save-password" className="text-[12px] text-rd-text-dim cursor-pointer hover:text-rd-text transition-colors">
+            Ricorda password nel portachiavi di sistema
+          </label>
+        </div>
+
         <input type="submit" className="hidden" />
       </form>
     </Modal>

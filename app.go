@@ -8,6 +8,7 @@ import (
 
 	"radiantcl1/backend/db"
 	"radiantcl1/backend/protocols"
+	"radiantcl1/backend/vault"
 	"radiantcl1/parser"
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -23,6 +24,7 @@ type App struct {
 	ctx             context.Context
 	dbManager       *db.Manager
 	terminalService *protocols.TerminalService
+	vaultService    *vault.VaultService
 }
 
 func NewApp() *App {
@@ -43,6 +45,9 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize terminal service
 	a.terminalService = protocols.NewTerminalService()
 	a.terminalService.SetContext(ctx)
+
+	// Initialize vault service
+	a.vaultService = vault.NewVaultService()
 }
 
 // shutdown is called when the application is terminating
@@ -206,24 +211,38 @@ func (a *App) MoveItem(itemType string, id int64, targetFolderID int64, sortOrde
 	return fmt.Errorf("invalid item type: %s", itemType)
 }
 
-// ConnectTerminal avvia una connessione terminale per un host
+// ConnectTerminal avvia una connessione terminale per un host.
+// Se l'host ha un profilo di credenziali associato, lo usa automaticamente.
+// Altrimenti usa username/password passati dal frontend (se presenti).
 func (a *App) ConnectTerminal(hostID int64, username string, password string) (string, error) {
 	if a.dbManager == nil {
 		return "", fmt.Errorf("database not initialized")
 	}
 
-	// Recupera dati host
+	// 1. Recupera dati host
 	var h db.Host
-	err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port FROM hosts WHERE id = ?", hostID).Scan(
-		&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port)
+	err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port, credential_id FROM hosts WHERE id = ?", hostID).Scan(
+		&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.CredentialID)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch host: %w", err)
+	}
+
+	finalUser := username
+	finalPass := password
+
+	// 2. Se l'host ha un profilo associato, usalo
+	if h.CredentialID != nil {
+		savedUser, savedPass, err := a.vaultService.GetPassword(*h.CredentialID)
+		if err == nil {
+			finalUser = savedUser
+			finalPass = savedPass
+		}
 	}
 
 	sessionID := fmt.Sprintf("term-%d-%d", hostID, os.Getpid())
 	
 	if h.Type == "ssh" {
-		err = a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, username, password)
+		err = a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, finalUser, finalPass)
 	} else {
 		// Telnet ignora user/pass passati dalla modale poiché è interattivo nel terminale
 		err = a.terminalService.ConnectTelnet(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port)
@@ -234,6 +253,69 @@ func (a *App) ConnectTerminal(hostID int64, username string, password string) (s
 	}
 
 	return sessionID, nil
+}
+
+// GetCredentials restituisce l'elenco dei profili di credenziali
+func (a *App) GetCredentials() ([]db.Credential, error) {
+	if a.dbManager == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.GetCredentials()
+}
+
+// AddCredential crea un nuovo profilo e salva la password nel vault
+func (a *App) AddCredential(c db.Credential) (int64, error) {
+	if a.dbManager == nil || a.vaultService == nil {
+		return 0, fmt.Errorf("services not initialized")
+	}
+	
+	id, err := a.dbManager.AddCredential(c)
+	if err != nil {
+		return 0, err
+	}
+	
+	if c.Password != "" {
+		_ = a.vaultService.StorePassword(id, c.Username, c.Password)
+	}
+	
+	return id, nil
+}
+
+// UpdateCredential aggiorna un profilo e opzionalmente la password nel vault
+func (a *App) UpdateCredential(c db.Credential) error {
+	if a.dbManager == nil || a.vaultService == nil {
+		return fmt.Errorf("services not initialized")
+	}
+	
+	err := a.dbManager.UpdateCredential(c)
+	if err != nil {
+		return err
+	}
+	
+	if c.Password != "" {
+		_ = a.vaultService.StorePassword(c.ID, c.Username, c.Password)
+	}
+	
+	return nil
+}
+
+// DeleteCredential rimuove un profilo e le credenziali dal vault
+func (a *App) DeleteCredential(id int64) error {
+	if a.dbManager == nil || a.vaultService == nil {
+		return fmt.Errorf("services not initialized")
+	}
+	
+	_ = a.vaultService.DeletePassword(id)
+	return a.dbManager.DeleteCredential(id)
+}
+
+// GetCredentialPassword recupera la password per visualizzarla nel manager (sicuro)
+func (a *App) GetCredentialPassword(id int64) (string, error) {
+	if a.vaultService == nil {
+		return "", fmt.Errorf("vault not initialized")
+	}
+	_, pass, err := a.vaultService.GetPassword(id)
+	return pass, err
 }
 
 // GetActiveConnections restituisce l'elenco delle connessioni attive

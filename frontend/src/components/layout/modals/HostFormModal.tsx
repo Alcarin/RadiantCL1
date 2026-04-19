@@ -3,6 +3,7 @@ import { Modal, ModalButton, ModalInput, ModalLabel, ModalSelect } from '../../u
 import { Icon, IconName } from '../../ui/Icon';
 import { db } from '../../../../wailsjs/go/models';
 import { cn } from '../../../lib/utils';
+import { CredentialsService } from '../../../lib/credentials_service';
 
 interface HostFormModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface HostFormModalProps {
   onSave: (hostData: Partial<db.Host>) => void;
   initialData?: Partial<db.Host>;
   isEdit?: boolean;
+  onOpenCredentials: () => void;
 }
 
 const AVAILABLE_ICONS: IconName[] = [
@@ -66,6 +68,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
   onSave,
   initialData,
   isEdit = false,
+  onOpenCredentials,
 }) => {
   const [formData, setFormData] = useState<Partial<db.Host>>({
     label: '',
@@ -73,8 +76,21 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
     type: 'ssh',
     port: 22,
     icon: 'server',
+    credentialId: 0,
     ...initialData
   });
+
+  const [credentials, setCredentials] = useState<db.Credential[]>([]);
+
+  useEffect(() => {
+    const loadCreds = async () => {
+      const list = await CredentialsService.getCredentials();
+      setCredentials(list || []);
+    };
+    if (isOpen) {
+      loadCreds();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -84,6 +100,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
         type: 'ssh',
         port: 22,
         icon: 'server',
+        credentialId: 0,
         ...initialData
       });
     }
@@ -95,7 +112,8 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
         ...formData,
         label: formData.label.trim(),
         address: formData.address.trim(),
-        port: Number(formData.port)
+        port: Number(formData.port),
+        credentialId: formData.credentialId && formData.credentialId > 0 ? formData.credentialId : undefined
       });
       onClose();
     }
@@ -171,6 +189,29 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
           </div>
 
           <div className="col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <ModalLabel className="mb-0">Profilo Credenziali</ModalLabel>
+              <button 
+                type="button" 
+                onClick={onOpenCredentials}
+                className="text-[11px] text-rd-accent hover:underline flex items-center gap-1"
+              >
+                <Icon name="settings" size={10} />
+                Gestisci
+              </button>
+            </div>
+            <ModalSelect
+              value={formData.credentialId || 0}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, credentialId: parseInt(e.target.value) })}
+            >
+              <option value="0">Chiedi ogni volta / Nessuna</option>
+              {credentials.map(c => (
+                <option key={c.id} value={c.id}>{c.label} ({c.username})</option>
+              ))}
+            </ModalSelect>
+          </div>
+
+          <div className="col-span-2">
             <ModalLabel>Icona</ModalLabel>
             <div className="flex flex-wrap gap-2 mt-1">
               {AVAILABLE_ICONS.map((icon) => (
@@ -182,7 +223,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
                   className={cn(
                     "p-2 border transition-all",
                     formData.icon === icon 
-                      ? "bg-rd-accent/20 border-rd-accent text-rd-text-active shadow-[0_0_8px_rgba(0,122,204,0.4)]" 
+                      ? "bg-rd-accent/20 border-rd-accent text-rd-accent shadow-[0_0_8px_rgba(253,224,71,0.4)]" 
                       : "bg-[#2d2d2d] border-transparent text-rd-text-dim hover:text-rd-text hover:bg-rd-list-hover"
                   )}
                 >

@@ -17,14 +17,15 @@ type Folder struct {
 
 // Host represents a terminal host in the tree.
 type Host struct {
-	ID        int64  `json:"id"`
-	FolderID  *int64 `json:"folderId"`
-	Label     string `json:"label"`
-	Icon      string `json:"icon"`
-	Address   string `json:"address"`
-	Type      string `json:"type"`
-	Port      int    `json:"port"`
-	SortOrder int    `json:"sortOrder"`
+	ID           int64  `json:"id"`
+	FolderID     *int64 `json:"folderId"`
+	CredentialID *int64 `json:"credentialId"`
+	Label        string `json:"label"`
+	Icon         string `json:"icon"`
+	Address      string `json:"address"`
+	Type         string `json:"type"`
+	Port         int    `json:"port"`
+	SortOrder    int    `json:"sortOrder"`
 }
 
 // TreeData is a container for both folders and hosts.
@@ -57,18 +58,19 @@ func (m *Manager) GetTreeData() (TreeData, error) {
 	}
 
 	// Fetch Hosts
-	rowsH, err := m.DB.Query("SELECT id, folder_id, label, icon, address, type, port, sort_order FROM hosts ORDER BY sort_order ASC")
+	rowsH, err := m.DB.Query("SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order FROM hosts ORDER BY sort_order ASC")
 	if err != nil {
 		return data, fmt.Errorf("failed to query hosts: %w", err)
 	}
 	defer rowsH.Close()
 	for rowsH.Next() {
 		var h Host
-		var fid *int64
-		if err := rowsH.Scan(&h.ID, &fid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder); err != nil {
+		var fid, cid *int64
+		if err := rowsH.Scan(&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder); err != nil {
 			return data, err
 		}
 		h.FolderID = fid
+		h.CredentialID = cid
 		data.Hosts = append(data.Hosts, h)
 	}
 
@@ -93,8 +95,8 @@ func (m *Manager) AddFolder(f Folder) (int64, error) {
 
 // AddHost inserts a new host.
 func (m *Manager) AddHost(h Host) (int64, error) {
-	res, err := m.DB.Exec("INSERT INTO hosts (folder_id, label, icon, address, type, port, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		h.FolderID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder)
+	res, err := m.DB.Exec("INSERT INTO hosts (folder_id, credential_id, label, icon, address, type, port, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		h.FolderID, h.CredentialID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder)
 	if err != nil {
 		return 0, err
 	}
@@ -116,8 +118,8 @@ func (m *Manager) DeleteFolder(id int64) error {
 
 // UpdateHost updates an existing host.
 func (m *Manager) UpdateHost(h Host) error {
-	_, err := m.DB.Exec("UPDATE hosts SET folder_id = ?, label = ?, icon = ?, address = ?, type = ?, port = ?, sort_order = ? WHERE id = ?",
-		h.FolderID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder, h.ID)
+	_, err := m.DB.Exec("UPDATE hosts SET folder_id = ?, credential_id = ?, label = ?, icon = ?, address = ?, type = ?, port = ?, sort_order = ? WHERE id = ?",
+		h.FolderID, h.CredentialID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder, h.ID)
 	return err
 }
 

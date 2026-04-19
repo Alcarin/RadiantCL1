@@ -7,6 +7,7 @@ import { HostFormModal } from './modals/HostFormModal';
 import { FolderFormModal } from './modals/FolderFormModal';
 import { DeleteConfirmModal } from './modals/DeleteConfirmModal';
 import { LoginModal } from './modals/LoginModal';
+import { CredentialsModal } from './modals/CredentialsModal';
 import { db } from '../../../wailsjs/go/models';
 import { getDndManager } from '../../lib/dnd';
 import { EventsEmit, EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
@@ -66,6 +67,7 @@ export const ConnectionsView: React.FC = () => {
     error?: string | null,
     isConnecting?: boolean
   }>({ isOpen: false });
+  const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState(false);
 
   const loadHosts = useCallback(async () => {
     if (hosts.length === 0) setIsLoading(true);
@@ -133,8 +135,8 @@ export const ConnectionsView: React.FC = () => {
   const handleConnect = async (node: TreeNode, username = '', password = '') => {
      if (node.id.startsWith('f-')) return;
      
-     // Se SSH e non abbiamo credenziali, apri la modale
-     if (node.data.type === 'ssh' && !username) {
+     // Se SSH e non abbiamo credenziali e l'host non ha un profilo associato, apri la modale
+     if (node.data.type === 'ssh' && !username && !node.data.credentialId) {
        setLoginModal({ isOpen: true, node, error: null, isConnecting: false });
        setContextMenu(null);
        return;
@@ -286,6 +288,7 @@ export const ConnectionsView: React.FC = () => {
             <>
               <ActionButtonProper icon="plus" title="Add Host" onClick={() => setModalState({ type: 'host', isEdit: false })} />
               <ActionButtonProper icon="folderPlus" title="Add Folder" onClick={() => setModalState({ type: 'folder', isEdit: false })} />
+              <ActionButtonProper icon="keyRound" title="Credential Manager" onClick={() => setIsCredentialsModalOpen(true)} />
               <ActionButtonProper icon="fold" title="Collapse All" onClick={collapseAll} />
               <ActionButtonProper icon="maximize" title="Expand All" onClick={expandAll} />
               <ActionButtonProper icon="refresh" title="Reload" onClick={loadHosts} />
@@ -344,7 +347,17 @@ export const ConnectionsView: React.FC = () => {
         </div>
       )}
 
-      <HostFormModal isOpen={modalState.type === 'host'} onClose={() => setModalState({ type: null, isEdit: false })} onSave={handleSaveHost} isEdit={modalState.isEdit} initialData={modalState.node?.data} />
+      <HostFormModal 
+        isOpen={modalState.type === 'host'} 
+        onClose={() => setModalState({ type: null, isEdit: false })} 
+        onSave={handleSaveHost} 
+        isEdit={modalState.isEdit} 
+        initialData={modalState.node?.data} 
+        onOpenCredentials={() => {
+          setModalState({ type: null, isEdit: false }); // Chiudi host form
+          setIsCredentialsModalOpen(true);
+        }}
+      />
       <FolderFormModal isOpen={modalState.type === 'folder'} onClose={() => setModalState({ type: null, isEdit: false })} onSave={handleSaveFolder} isEdit={modalState.isEdit} initialLabel={modalState.node?.label} />
       <DeleteConfirmModal isOpen={modalState.type === 'delete'} onClose={() => setModalState({ type: null, isEdit: false })} onConfirm={handleDeleteConfirm} title={modalState.node?.id.startsWith('f-') ? 'Elimina Cartella' : 'Elimina Host'} itemName={modalState.node?.label || ''} itemType={modalState.node?.id.startsWith('f-') ? 'folder' : 'host'} />
       <LoginModal 
@@ -354,6 +367,10 @@ export const ConnectionsView: React.FC = () => {
         hostName={loginModal.node?.label || ''} 
         error={loginModal.error}
         isConnecting={loginModal.isConnecting}
+      />
+      <CredentialsModal 
+        isOpen={isCredentialsModalOpen} 
+        onClose={() => setIsCredentialsModalOpen(false)} 
       />
     </div>
   );

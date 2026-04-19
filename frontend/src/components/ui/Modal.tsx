@@ -97,7 +97,7 @@ export const ModalButton: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   const variants = {
-    primary: "bg-rd-accent hover:bg-rd-accent-hover text-white",
+    primary: "bg-rd-accent hover:bg-rd-accent-hover text-rd-accent-fg",
     secondary: "bg-[#3e3e42] hover:bg-[#45454d] text-rd-text",
     danger: "bg-[#e51400] hover:bg-[#c71100] text-white",
   };
@@ -126,8 +126,8 @@ export const ModalInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> =
   />
 );
 
-export const ModalLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <label className="block text-[12px] text-rd-text-dim mb-1 font-medium">
+export const ModalLabel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <label className={cn("block text-[12px] text-rd-text-dim mb-1 font-medium", className)}>
     {children}
   </label>
 );

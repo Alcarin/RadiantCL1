@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Icon Tooltips**: Added titles to icons in the host selection modal for easier identification.
 - **Status Indicators**: Visual status dots (Green/Red) in the "Active Connections" section.
 - **Persistent Session Logging**: Implemented versioned logging via Jujutsu (jj), including ANSI code stripping and automatic idle-timeout commits.
+- **Centralized Credential Manager**: New management interface for reusable credential profiles across multiple hosts.
+- **OS Keychain Integration**: Secure storage for host passwords using system-level services (Windows Credential Manager, macOS Keychain) via `go-keyring`.
+- **Database Schema Expansion**: Added `credentials` table and linked it to existing host infrastructure.
 - **Connections Management**: Implemented "Saved Hosts" sidebar with SQLite backend and folder organization.
 
 ### Changed
@@ -24,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sidebar Aesthetics**: Applied Radiant Gold theme to all host icons for visual consistency.
 - **Sober Typography**: Reverted host labels to standard font weight and color for a more professional look.
 - **Status Indicators**: "Disconnected" state now uses a **Red X icon** instead of a simple dot to improve accessibility and clear distinction for color-blind users.
+- **Host Configuration**: Updated host form to support credential profile selection.
+- **Connection Workflow**: Terminal connections now automatically resolve credentials from the vault, skipping manual login for predefined profiles.
 
 ### Fixed
 
@@ -31,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TypeScript Compilation**: Resolved missing imports and test mock inconsistencies caused by the new session metadata structure.
 - **Drag and Drop / Mouse Control**: Resolved runtime conflicts and crashes in the DND library (react-arborist vs react-mosaic-component).
 - **Context Switching**: Fixed stability issues when switching between different terminal or editor contexts.
+- **UI Contrast**: Implemented dynamic text color calculation (`oklch`) for Radiant Gold elements to ensure legibility on accent backgrounds.
 
 ---
 

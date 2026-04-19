@@ -69,6 +69,8 @@ import {
   Thermometer,
   Lock,
   Tablet,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export type IconName =
@@ -141,7 +143,9 @@ export type IconName =
   | 'cloudSun'
   | 'thermometer'
   | 'lock'
-  | 'tablet';
+  | 'tablet'
+  | 'eye'
+  | 'eyeOff';
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
@@ -214,6 +218,8 @@ const icons: Record<IconName, React.ElementType> = {
   thermometer: Thermometer,
   lock: Lock,
   tablet: Tablet,
+  eye: Eye,
+  eyeOff: EyeOff,
 };
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
