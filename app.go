@@ -346,3 +346,19 @@ func (a *App) MarkTerminalReady(sessionID string) {
 	a.terminalService.MarkReady(sessionID)
 }
 
+// GetSetting recupera una preferenza dell'utente
+func (a *App) GetSetting(key string) (string, error) {
+	if a.dbManager == nil {
+		return "", fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.GetSetting(key)
+}
+
+// SaveSetting salva una preferenza dell'utente
+func (a *App) SaveSetting(key string, value string) error {
+	if a.dbManager == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.SaveSetting(key, value)
+}
+

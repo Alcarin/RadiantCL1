@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon, IconName } from '../ui/Icon';
 import { cn } from '../../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface ActivityBarItem {
   id: string;
@@ -15,6 +16,8 @@ interface ActivityBarProps {
 }
 
 export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, items }) => {
+  const { t } = useTranslation();
+  
   return (
     <div
       className="flex flex-col items-center bg-rd-activitybar border-r border-rd-border shrink-0 w-12"
@@ -50,13 +53,13 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, it
       <div className="mt-auto flex flex-col items-center w-full pb-1">
         <button
           className="flex items-center justify-center w-full py-[10px] text-rd-text-dim hover:text-rd-text-active transition-colors focus:outline-none"
-          title="Account"
+          title={t('common.account')}
         >
           <Icon name="activity" size={20} />
         </button>
         <button
           className="flex items-center justify-center w-full py-[10px] text-rd-text-dim hover:text-rd-text-active transition-colors focus:outline-none"
-          title="Settings"
+          title={t('common.preferences')}
         >
           <Icon name="settings" size={20} />
         </button>

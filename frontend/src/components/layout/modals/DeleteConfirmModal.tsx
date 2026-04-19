@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, ModalButton } from '../../ui/Modal';
+import { useTranslation } from 'react-i18next';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   itemName,
   itemType,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       isOpen={isOpen}
@@ -26,19 +29,23 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
-            Annulla
+            {t('common.cancel')}
           </ModalButton>
           <ModalButton variant="danger" onClick={onConfirm}>
-            Elimina
+            {t('common.delete')}
           </ModalButton>
         </>
       }
     >
       <div className="text-[13px] text-rd-text">
-        <p>Sei sicuro di voler eliminare {itemType === 'folder' ? 'la cartella' : "l'host"} <strong>"{itemName}"</strong>?</p>
+        <p>
+          {itemType === 'folder' 
+            ? t('modals.deleteFolderConfirm', { name: itemName }) 
+            : t('modals.deleteHostConfirm', { name: itemName })}
+        </p>
         {itemType === 'folder' && (
           <p className="mt-2 text-[#f14c4c] text-[12px]">
-            Questa azione eliminerà permanentemente tutti gli host e le sottocartelle in essa contenuti.
+            {t('modals.deleteFolderWarning')}
           </p>
         )}
       </div>

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Multilingual Support (i18n)**: Implemented full internationalization support for English, Italian, French, Spanish, and German.
+- **Preferences Manager**: New modal for user settings, starting with real-time language switching.
+- **Settings Persistence**: Backend synchronization for user preferences, stored in the SQLite database.
+- **Modernized Build System (TS 5)**: Upgraded the frontend infrastructure to TypeScript 5.4 and configured `moduleResolution: "Bundler"`.
 - **Functional Top Menu**: Replaced the mock MenuBar with a fully functional dropdown system (File, Connect, Help).
 - **Dynamic Connect Menu**: Implemented a recursive menu that mirrors the full saved hosts tree, including hierarchical folders and specific host icons.
 - **Credits Modal**: New integrated modal detailing the core technology stack (Wails, Monaco, xterm.js, etc.).
@@ -26,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **UI Localization Refactoring**: Migrated all hardcoded strings in MenuBar, SideBar, StatusBar, and Modals to dynamic i18n keys.
+- **Credits Expansion**: Fully translated technology stack descriptions and legal notices across all supported languages.
 - **Menu Snappiness**: Optimized event handling to close menus instantly upon selection, ensuring a responsive feel during async connection starts.
 - **Visual Branding**: Switched primary accent color to "Radiant Gold" (Yellow) across the entire application UI.
 - **Sidebar Aesthetics**: Applied Radiant Gold theme to all host icons for visual consistency.
@@ -36,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Type Compatibility**: Resolved critical compiler errors between `i18next` and legacy TypeScript by upgrading the project to TypeScript 5.
+- **UI Regressions**: Fixed missing state hooks and type mismatches in `ConnectionsView.tsx` and `App.tsx` during the translation refactor.
 - **Menu Readability**: Removed transparency from top and context menus, using solid colors to prevent background text interference.
 - **CSS Variable Cleanup**: Resolved invalid `rd-bg-main` references in TreeView and status indicators, ensuring consistent theme rendering.
 - **JSON Unmarshalling**: Fixed a critical bug where `folderId` was sent as a string instead of an int64, preventing host updates.

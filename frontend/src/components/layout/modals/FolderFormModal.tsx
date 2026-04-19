@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, ModalButton, ModalInput, ModalLabel } from '../../ui/Modal';
+import { useTranslation } from 'react-i18next';
 
 interface FolderFormModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const FolderFormModal: React.FC<FolderFormModalProps> = ({
   initialLabel = '',
   isEdit = false,
 }) => {
+  const { t } = useTranslation();
   const [label, setLabel] = useState(initialLabel);
 
   useEffect(() => {
@@ -35,21 +37,21 @@ export const FolderFormModal: React.FC<FolderFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? 'Modifica Cartella' : 'Nuova Cartella'}
+      title={isEdit ? t('modals.editFolder') : t('modals.newFolder')}
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
-            Annulla
+            {t('common.cancel')}
           </ModalButton>
           <ModalButton variant="primary" onClick={handleSave} disabled={!label.trim()}>
-            Salva
+            {t('common.save')}
           </ModalButton>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <ModalLabel>Nome Cartella</ModalLabel>
+          <ModalLabel>{t('common.folderName') || 'Folder Name'}</ModalLabel>
           <ModalInput
             autoFocus
             value={label}

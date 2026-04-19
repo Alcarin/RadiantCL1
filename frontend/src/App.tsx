@@ -20,6 +20,8 @@ import { SideBarSection } from './components/layout/SideBarSection';
 import { getDndManager } from './lib/dnd';
 import { MultiBackend } from 'react-dnd-multi-backend';
 import { HTML5toTouch } from 'rdndmb-html5-to-touch';
+import { useTranslation } from 'react-i18next';
+import { SettingsService } from './lib/settings_service';
 
 // Interface for all open components in tabs
 interface OpenTab {
@@ -44,6 +46,18 @@ function App() {
   const [mosaicLayout, setMosaicLayout] = useLocalStorage<MosaicNode<MosaicId> | null>('mosaicLayout', 'main-group');
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
   const [sideBarVisible, setSideBarVisible] = useState(true);
+  const { t, i18n } = useTranslation();
+
+  // Load language on startup
+  useEffect(() => {
+    const loadLang = async () => {
+      const lang = await SettingsService.getLanguage();
+      if (lang && lang !== i18n.language) {
+        i18n.changeLanguage(lang);
+      }
+    };
+    loadLang();
+  }, [i18n]);
 
   // Listen for terminal open events
   useEffect(() => {
@@ -106,7 +120,7 @@ function App() {
       const tabId = `file-${Date.now()}`;
       setOpenTabs(prev => [...prev, { 
         id: tabId, 
-        name: res.name || 'document', 
+        name: res.name || t('common.document') || 'document', 
         type: 'editor', 
         content: res.content,
         ast: res.ast
@@ -155,22 +169,28 @@ function App() {
         }
       }}
       items={[
-        { id: 'connections', icon: 'network', label: 'Connections' },
-        { id: 'explorer', icon: 'file', label: 'Explorer' },
-        { id: 'search', icon: 'search', label: 'Search' },
-        { id: 'ast', icon: 'layout', label: 'AST Viewer' },
+        { id: 'connections', icon: 'network', label: t('common.connections') },
+        { id: 'explorer', icon: 'file', label: t('common.explorer') },
+        { id: 'search', icon: 'search', label: t('common.search') },
+        { id: 'ast', icon: 'layout', label: t('common.astViewer') },
       ]}
     />
   );
 
   const sideBar = (
     <SideBar 
-      title={activeSideBar} 
+      title={
+        activeSideBar === 'connections' ? t('common.connections') : 
+        activeSideBar === 'explorer' ? t('common.explorer') : 
+        activeSideBar === 'search' ? t('common.search') :
+        activeSideBar === 'ast' ? t('common.astViewer') : 
+        activeSideBar
+      } 
     >
       {activeSideBar === 'connections' && <ConnectionsView />}
       {activeSideBar === 'explorer' && (
         <SideBarSection 
-          title="Open Editors"
+          title={t('common.openEditors')}
           actions={
             <button onClick={handleOpenConfig} className="p-0.5 hover:bg-rd-list-hover rounded text-rd-text-dim hover:text-rd-text transition-colors">
               <Icon name="plus" size={14} />
@@ -189,7 +209,7 @@ function App() {
           {activeTabInGroup('main-group')?.ast ? (
             <ASTNodeView node={activeTabInGroup('main-group')!.ast!} defaultExpanded={true} />
           ) : (
-            <div className="p-4 text-xs text-zinc-500 italic">Seleziona un file con AST</div>
+            <div className="p-4 text-xs text-zinc-500 italic">{t('common.selectFileWithAst')}</div>
           )}
         </div>
       )}
@@ -228,7 +248,7 @@ function App() {
         activityBar={activityBar}
         sideBar={sideBar}
         mainContent={mainContent}
-        bottomPanel={<div className="p-4 text-zinc-500 text-xs">Terminal / Logs Output</div>}
+        bottomPanel={<div className="p-4 text-zinc-500 text-xs">{t('common.terminalLogsOutput')}</div>}
         statusBar={<StatusBar />}
         topBar={<MenuBar onOpenFile={handleOpenConfig} />}
         sideBarVisible={sideBarVisible}

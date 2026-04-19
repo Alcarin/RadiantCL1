@@ -4,7 +4,9 @@ import { WindowMinimise, WindowToggleMaximise, Quit, Environment, EventsEmit } f
 import { HostsService } from '../../lib/hosts_service';
 import { TreeNode } from '../ui/TreeView';
 import { CreditsModal } from './modals/CreditsModal';
+import { PreferencesModal } from './modals/PreferencesModal';
 import { ConnectTerminal } from '../../../wailsjs/go/main/App';
+import { useTranslation } from 'react-i18next';
 
 interface MenuBarProps {
   onOpenFile?: () => void;
@@ -15,6 +17,8 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [hosts, setHosts] = useState<TreeNode[]>([]);
   const [isCreditsOpen, setIsCreditsOpen] = useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,38 +112,38 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
   const menuConfig = [
     {
       id: 'file',
-      label: 'File',
+      label: t('common.file'),
       items: [
-        { label: 'Open File...', icon: 'file' as IconName, action: () => { setActiveMenu(null); onOpenFile?.(); } },
-        { separator: true, label: 'Preferences', icon: 'settings' as IconName, action: () => { setActiveMenu(null); } },
-        { separator: true, label: 'Exit', icon: 'close' as IconName, action: () => handleClose() },
+        { label: t('common.openFile') || 'Open File...', icon: 'file' as IconName, action: () => { setActiveMenu(null); onOpenFile?.(); } },
+        { separator: true, label: t('common.preferences'), icon: 'settings' as IconName, action: () => { setActiveMenu(null); setIsPreferencesOpen(true); } },
+        { separator: true, label: t('common.exit') || 'Exit', icon: 'close' as IconName, action: () => handleClose() },
       ]
     },
     {
       id: 'connect',
-      label: 'Connect',
-      items: hosts.length > 0 ? mapHostsToMenu(hosts) : [{ label: 'No saved hosts', disabled: true }]
+      label: t('common.connect'),
+      items: hosts.length > 0 ? mapHostsToMenu(hosts) : [{ label: t('common.noSavedHosts') || 'No saved hosts', disabled: true }]
     },
     {
       id: 'help',
-      label: 'Help',
+      label: t('common.help') || 'Help',
       items: [
-        { label: 'Welcome', icon: 'terminal' as IconName, action: () => setActiveMenu(null) },
-        { label: 'Documentation', icon: 'file' as IconName, action: () => setActiveMenu(null) },
-        { separator: true, label: 'Credits', icon: 'info' as IconName, action: () => { setActiveMenu(null); setIsCreditsOpen(true); } },
+        { label: t('common.welcome') || 'Welcome', icon: 'terminal' as IconName, action: () => setActiveMenu(null) },
+        { label: t('common.documentation') || 'Documentation', icon: 'file' as IconName, action: () => setActiveMenu(null) },
+        { separator: true, label: t('common.credits') || 'Credits', icon: 'info' as IconName, action: () => { setActiveMenu(null); setIsCreditsOpen(true); } },
       ]
     }
   ];
 
   const renderWindowsControls = () => (
     <div className="flex items-stretch h-full no-drag ml-auto">
-      <button onClick={handleMinimise} className="flex items-center justify-center w-[46px] hover:bg-white/10 transition-colors" title="Minimize">
+      <button onClick={handleMinimise} className="flex items-center justify-center w-[46px] hover:bg-white/10 transition-colors" title={t('common.minimize')}>
         <div className="w-3 h-[1px] bg-rd-text" />
       </button>
-      <button onClick={handleToggleMaximise} className="flex items-center justify-center w-[46px] hover:bg-white/10 transition-colors" title="Maximize">
+      <button onClick={handleToggleMaximise} className="flex items-center justify-center w-[46px] hover:bg-white/10 transition-colors" title={t('common.maximize')}>
         <div className="w-[9px] h-[9px] border border-rd-text" />
       </button>
-      <button onClick={handleClose} className="flex items-center justify-center w-[46px] hover:bg-[#e81123] hover:text-white transition-colors group" title="Close">
+      <button onClick={handleClose} className="flex items-center justify-center w-[46px] hover:bg-[#e81123] hover:text-white transition-colors group" title={t('common.close')}>
         <Icon name="close" size={16} className="text-rd-text group-hover:text-white" />
       </button>
     </div>
@@ -202,6 +206,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       {!isMac && renderWindowsControls()}
 
       <CreditsModal isOpen={isCreditsOpen} onClose={() => setIsCreditsOpen(false)} />
+      <PreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
     </div>
   );
 };

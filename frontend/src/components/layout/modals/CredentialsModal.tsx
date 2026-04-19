@@ -3,6 +3,7 @@ import { Modal, ModalButton, ModalInput, ModalLabel } from '../../ui/Modal';
 import { Icon } from '../../ui/Icon';
 import { CredentialsService } from '../../../lib/credentials_service';
 import { db } from '../../../../wailsjs/go/models';
+import { useTranslation } from 'react-i18next';
 
 interface CredentialsModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
   onClose,
   onSelect
 }) => {
+  const { t } = useTranslation();
   const [credentials, setCredentials] = useState<db.Credential[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -83,7 +85,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Sei sicuro di voler eliminante questo profilo di credenziali?")) {
+    if (confirm(t('modals.deleteProfileConfirm'))) {
       await CredentialsService.deleteCredential(id);
       loadCredentials();
     }
@@ -108,26 +110,26 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Gestione Credenziali"
+      title={t('modals.manageCredentials')}
       width="max-w-2xl"
       footer={
         <div className="flex justify-between w-full">
           {!showForm ? (
             <>
-              <ModalButton variant="secondary" onClick={onClose}>Chiudi</ModalButton>
+              <ModalButton variant="secondary" onClick={onClose}>{t('common.close')}</ModalButton>
               <ModalButton variant="primary" onClick={handleCreateNew}>
-                Nuovo Profilo
+                {t('modals.newProfile')}
               </ModalButton>
             </>
           ) : (
             <>
-              <ModalButton variant="secondary" onClick={resetForm}>Annulla</ModalButton>
+              <ModalButton variant="secondary" onClick={resetForm}>{t('common.cancel')}</ModalButton>
               <ModalButton 
                 variant="primary" 
                 onClick={handleSave}
                 disabled={!label.trim() || !username.trim()}
               >
-                Salva Profilo
+                {t('modals.saveProfile')}
               </ModalButton>
             </>
           )}
@@ -137,14 +139,14 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
       {showForm ? (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div>
-            <ModalLabel>Etichetta Profilo</ModalLabel>
+            <ModalLabel>{t('modals.profileLabel')}</ModalLabel>
             <ModalInput 
               value={label} 
               onChange={(e: any) => setLabel(e.target.value)} 
               placeholder="es. Account Amministratore Core"
               autoFocus
             />
-            <p className="text-[11px] text-rd-text-dim mt-1">Un nome descrittivo per riconoscere questo profilo.</p>
+            <p className="text-[11px] text-rd-text-dim mt-1">{t('modals.profileLabelHelp') || 'A descriptive name to recognize this profile.'}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -156,7 +158,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
               />
             </div>
             <div>
-              <ModalLabel>{editingId ? 'Nuova Password (opzionale)' : 'Password'}</ModalLabel>
+              <ModalLabel>{editingId ? t('common.newPasswordOptional') || 'New Password (optional)' : 'Password'}</ModalLabel>
               <ModalInput 
                 type="password" 
                 value={password} 
@@ -169,8 +171,7 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
             <div className="p-3 bg-white/5 rounded border border-white/10 flex items-start gap-3">
               <Icon name="activity" size={16} className="text-rd-accent mt-0.5" />
               <p className="text-[12px] text-rd-text-dim leading-relaxed">
-                Stai modificando un profilo esistente. Se cambi la password, verrà aggiornata per tutti gli host associati. 
-                Lascia il campo password vuoto per mantenere quella attuale.
+                {t('modals.editingNotice')}
               </p>
             </div>
           )}
@@ -178,12 +179,12 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
       ) : (
         <div className="space-y-2">
           {isLoading ? (
-            <div className="py-8 flex justify-center italic text-rd-text-dim text-[13px]">Caricamento...</div>
+            <div className="py-8 flex justify-center italic text-rd-text-dim text-[13px]">{t('common.loading')}</div>
           ) : credentials.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center text-rd-text-dim border-2 border-dashed border-white/5 rounded-lg bg-white/[0.02]">
               <Icon name="network" size={32} className="opacity-20 mb-3" />
-              <p className="text-[13px]">Nessun profilo salvato.</p>
-              <button onClick={handleCreateNew} className="text-rd-accent hover:underline text-[12px] mt-1">Crea il tuo primo profilo</button>
+              <p className="text-[13px]">{t('modals.emptyCredentials')}</p>
+              <button onClick={handleCreateNew} className="text-rd-accent hover:underline text-[12px] mt-1">{t('modals.createFirstProfile')}</button>
             </div>
           ) : (
             <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
@@ -211,21 +212,21 @@ export const CredentialsModal: React.FC<CredentialsModalProps> = ({
                     <button 
                       onClick={() => togglePasswordVisibility(c.id)}
                       className="p-1.5 hover:bg-white/10 rounded text-rd-text hover:text-rd-accent transition-colors"
-                      title={visiblePasswords[c.id] ? "Nascondi password" : "Mostra password"}
+                      title={visiblePasswords[c.id] ? t('modals.hidePassword') : t('modals.showPassword')}
                     >
                       <Icon name={visiblePasswords[c.id] ? "eyeOff" : "eye"} size={14} />
                     </button>
                     <button 
                       onClick={() => handleEdit(c)}
                       className="p-1.5 hover:bg-white/10 rounded text-rd-text hover:text-rd-text-active transition-colors"
-                      title="Modifica"
+                      title={t('modals.edit')}
                     >
                       <Icon name="settings" size={14} />
                     </button>
                     <button 
                       onClick={() => handleDelete(c.id)}
                       className="p-1.5 hover:bg-red-500/10 rounded text-rd-text hover:text-red-400 transition-colors"
-                      title="Elimina"
+                      title={t('modals.delete')}
                     >
                       <Icon name="close" size={14} />
                     </button>

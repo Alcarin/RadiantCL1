@@ -4,6 +4,7 @@ import { Icon, IconName } from '../../ui/Icon';
 import { db } from '../../../../wailsjs/go/models';
 import { cn } from '../../../lib/utils';
 import { CredentialsService } from '../../../lib/credentials_service';
+import { useTranslation } from 'react-i18next';
 
 interface HostFormModalProps {
   isOpen: boolean;
@@ -70,6 +71,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
   isEdit = false,
   onOpenCredentials,
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Partial<db.Host>>({
     label: '',
     address: '',
@@ -123,19 +125,19 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? 'Modifica Host' : 'Nuovo Host'}
+      title={isEdit ? t('modals.editHost') : t('modals.newHost')}
       width="max-w-md"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
-            Annulla
+            {t('common.cancel')}
           </ModalButton>
           <ModalButton 
             variant="primary" 
             onClick={handleSave} 
             disabled={!formData.label?.trim() || !formData.address?.trim()}
           >
-            Salva
+            {t('common.save')}
           </ModalButton>
         </>
       }
@@ -143,7 +145,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <ModalLabel>Nome Host</ModalLabel>
+            <ModalLabel>{t('common.hostName')}</ModalLabel>
             <ModalInput
               autoFocus
               value={formData.label}
@@ -153,7 +155,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
           </div>
           
           <div className="col-span-2">
-            <ModalLabel>Indirizzo (IP o FQDN)</ModalLabel>
+            <ModalLabel>{t('common.address')}</ModalLabel>
             <ModalInput
               value={formData.address}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, address: e.target.value })}
@@ -162,7 +164,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
           </div>
 
           <div>
-            <ModalLabel>Protocollo</ModalLabel>
+            <ModalLabel>{t('common.protocol')}</ModalLabel>
             <ModalSelect
               value={formData.type}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -180,7 +182,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
           </div>
 
           <div>
-            <ModalLabel>Porta</ModalLabel>
+            <ModalLabel>{t('common.port')}</ModalLabel>
             <ModalInput
               type="number"
               value={formData.port}
@@ -190,21 +192,21 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
 
           <div className="col-span-2">
             <div className="flex items-center justify-between mb-1">
-              <ModalLabel className="mb-0">Profilo Credenziali</ModalLabel>
+              <ModalLabel className="mb-0">{t('common.credentialProfile')}</ModalLabel>
               <button 
                 type="button" 
                 onClick={onOpenCredentials}
                 className="text-[11px] text-rd-accent hover:underline flex items-center gap-1"
               >
                 <Icon name="settings" size={10} />
-                Gestisci
+                {t('common.manage')}
               </button>
             </div>
             <ModalSelect
               value={formData.credentialId || 0}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, credentialId: parseInt(e.target.value) })}
             >
-              <option value="0">Chiedi ogni volta / Nessuna</option>
+              <option value="0">{t('common.askEveryTime') || 'Ask every time'}</option>
               {credentials.map(c => (
                 <option key={c.id} value={c.id}>{c.label} ({c.username})</option>
               ))}
@@ -212,7 +214,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
           </div>
 
           <div className="col-span-2">
-            <ModalLabel>Icona</ModalLabel>
+            <ModalLabel>{t('common.icon')}</ModalLabel>
             <div className="flex flex-wrap gap-2 mt-1">
               {AVAILABLE_ICONS.map((icon) => (
                 <button

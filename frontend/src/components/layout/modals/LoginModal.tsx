@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, ModalButton, ModalInput, ModalLabel } from '../../ui/Modal';
 import { Icon } from '../../ui/Icon';
+import { useTranslation } from 'react-i18next';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   error,
   isConnecting,
 }) => {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [savePassword, setSavePassword] = useState(true);
@@ -33,19 +35,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Connessione a ${hostName}`}
+      title={t('modals.connectTo', { name: hostName })}
       width="max-w-sm"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose} disabled={isConnecting}>
-            Annulla
+            {t('common.cancel')}
           </ModalButton>
           <ModalButton 
             variant="primary" 
             onClick={() => handleLogin()} 
             disabled={!username.trim() || isConnecting}
           >
-            {isConnecting ? 'Connessione...' : 'Connetti'}
+            {isConnecting ? t('modals.connecting') : t('common.connect')}
           </ModalButton>
         </>
       }
@@ -55,7 +57,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded text-[12px] text-red-400 leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="font-semibold mb-0.5 flex items-center gap-1.5">
               <Icon name="activity" size={13} />
-              Errore di Connessione
+              {t('modals.connectionError')}
             </div>
             {error}
           </div>
@@ -90,7 +92,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             className="w-3.5 h-3.5 rounded border-rd-border bg-white/5 text-rd-accent focus:ring-rd-accent focus:ring-offset-0"
           />
           <label htmlFor="save-password" className="text-[12px] text-rd-text-dim cursor-pointer hover:text-rd-text transition-colors">
-            Ricorda password nel portachiavi di sistema
+            {t('modals.rememberPassword')}
           </label>
         </div>
 

@@ -1,7 +1,10 @@
 import React from 'react';
 import { Icon } from '../ui/Icon';
+import { useTranslation } from 'react-i18next';
 
 export const StatusBar: React.FC = () => {
+  const { t } = useTranslation();
+  
   return (
     <div
       className="flex items-center justify-between px-2.5 bg-rd-statusbar text-rd-statusbar-fg text-[12px] shrink-0 select-none"
@@ -12,21 +15,21 @@ export const StatusBar: React.FC = () => {
       <div className="flex items-center h-full">
         <StatusItem>
           <Icon name="git" size={12} />
-          <span>main*</span>
+          <span>{t('common.mainBranch')}</span>
         </StatusItem>
         <StatusItem>
           <Icon name="activity" size={12} />
-          <span>Radiant Connected</span>
+          <span>{t('common.connected')}</span>
         </StatusItem>
       </div>
 
       {/* Right cluster */}
       <div className="flex items-center h-full">
-        <StatusItem>Spaces: 2</StatusItem>
-        <StatusItem>UTF-8</StatusItem>
+        <StatusItem>{t('common.spaces')}</StatusItem>
+        <StatusItem>{t('common.encoding')}</StatusItem>
         <StatusItem>
           <Icon name="cpu" size={12} />
-          <span>Cisco IOS</span>
+          <span>{t('common.ciscoIos')}</span>
         </StatusItem>
       </div>
     </div>

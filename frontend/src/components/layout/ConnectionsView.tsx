@@ -12,6 +12,7 @@ import { db } from '../../../wailsjs/go/models';
 import { getDndManager } from '../../lib/dnd';
 import { EventsEmit, EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { ConnectTerminal, GetActiveConnections } from '../../../wailsjs/go/main/App';
+import { useTranslation } from 'react-i18next';
 
 interface ActionButtonProps {
   icon: IconName;
@@ -51,10 +52,8 @@ const ActionButtonProper: React.FC<ActionButtonProps> = ({ icon, title, onClick 
 );
 
 export const ConnectionsView: React.FC = () => {
+  const { t } = useTranslation();
   const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
-  const [hosts, setHosts] = useState<TreeNode[]>([]);
-  const [activeConnections, setActiveConnections] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   
 
   
@@ -68,6 +67,15 @@ export const ConnectionsView: React.FC = () => {
     isConnecting?: boolean
   }>({ isOpen: false });
   const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState(false);
+  const [hosts, setHosts] = useState<TreeNode[]>([]);
+  const [activeConnections, setActiveConnections] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: 'host' | 'folder' | 'delete' | null;
+    isEdit: boolean;
+    node?: TreeNode;
+  }>({ isOpen: false, type: null, isEdit: false });
 
   const loadHosts = useCallback(async () => {
     if (hosts.length === 0) setIsLoading(true);
@@ -196,13 +204,13 @@ export const ConnectionsView: React.FC = () => {
     if (modalState.node.id.startsWith('f-')) await HostsService.deleteFolder(modalState.node.id);
     else await HostsService.deleteHost(modalState.node.id);
     if (selectedHostId === modalState.node.id) setSelectedHostId(undefined);
-    setModalState({ type: null, isEdit: false });
+    setModalState({ isOpen: false, type: null, isEdit: false });
     loadHosts();
   };
 
   // MAPPING: Active Connections to TreeNode
   const mappedActiveConnections = useMemo(() => {
-    return activeConnections.map(c => ({
+    return activeConnections.map((c: any) => ({
       id: c.id,
       label: c.name,
       status: c.status,
@@ -232,11 +240,6 @@ export const ConnectionsView: React.FC = () => {
     loadHosts();
   };
 
-  const [modalState, setModalState] = useState<{
-    type: 'host' | 'folder' | 'delete' | null;
-    isEdit: boolean;
-    node?: TreeNode;
-  }>({ type: null, isEdit: false });
 
   const renderNodeActions = (node: any) => (
     <>
@@ -244,9 +247,9 @@ export const ConnectionsView: React.FC = () => {
         className="p-0.5 hover:bg-white/10 rounded text-rd-text-dim hover:text-rd-text-active"
         onClick={(e) => { 
           e.stopPropagation(); 
-          setModalState({ type: node.id.startsWith('f-') ? 'folder' : 'host', isEdit: true, node }); 
+          setModalState({ isOpen: true, type: node.id.startsWith('f-') ? 'folder' : 'host', isEdit: true, node }); 
         }}
-        title="Modifica"
+        title={t('common.edit')}
       >
         <Icon name="settings" size={12} />
       </button>
@@ -254,9 +257,9 @@ export const ConnectionsView: React.FC = () => {
         className="p-0.5 hover:bg-white/10 rounded text-rd-text-dim hover:text-rd-text-active"
         onClick={(e) => { 
           e.stopPropagation(); 
-          setModalState({ type: 'delete', isEdit: false, node }); 
+          setModalState({ isOpen: true, type: 'delete', isEdit: false, node }); 
         }}
-        title="Elimina"
+        title={t('common.delete')}
       >
         <Icon name="close" size={12} />
       </button>
@@ -267,12 +270,12 @@ export const ConnectionsView: React.FC = () => {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 border-b border-rd-border">
         <SideBarSection 
-          title="Active Connections"
-          actions={<ActionButtonProper icon="plus" title="New Connection" onClick={() => {}} />}
+          title={t('common.activeConnections')}
+          actions={<ActionButtonProper icon="plus" title={t('common.connect')} onClick={() => {}} />}
         >
           <div className="flex flex-col">
             {activeConnections.length === 0 ? (
-              <div className="px-5 py-2 text-[12px] text-rd-text-dim italic">No active connections</div>
+              <div className="px-5 py-2 text-[12px] text-rd-text-dim italic">{t('common.noActiveConnections')}</div>
             ) : (
               <TreeView
                 ref={activeConnectionsTreeRef}
@@ -290,20 +293,20 @@ export const ConnectionsView: React.FC = () => {
 
       <div className="flex-1 min-h-0">
         <SideBarSection 
-          title="Saved Hosts"
+          title={t('common.savedHosts')}
           actions={
             <>
-              <ActionButtonProper icon="plus" title="Add Host" onClick={() => setModalState({ type: 'host', isEdit: false })} />
-              <ActionButtonProper icon="folderPlus" title="Add Folder" onClick={() => setModalState({ type: 'folder', isEdit: false })} />
-              <ActionButtonProper icon="keyRound" title="Credential Manager" onClick={() => setIsCredentialsModalOpen(true)} />
-              <ActionButtonProper icon="fold" title="Collapse All" onClick={collapseAll} />
-              <ActionButtonProper icon="maximize" title="Expand All" onClick={expandAll} />
-              <ActionButtonProper icon="refresh" title="Reload" onClick={loadHosts} />
+              <ActionButtonProper icon="plus" title={t('common.addHost')} onClick={() => setModalState({ isOpen: true, type: 'host', isEdit: false })} />
+              <ActionButtonProper icon="folderPlus" title={t('common.addFolder')} onClick={() => setModalState({ isOpen: true, type: 'folder', isEdit: false })} />
+              <ActionButtonProper icon="keyRound" title={t('modals.credentialManager')} onClick={() => setIsCredentialsModalOpen(true)} />
+              <ActionButtonProper icon="fold" title={t('common.collapseAll')} onClick={collapseAll} />
+              <ActionButtonProper icon="maximize" title={t('common.expandAll')} onClick={expandAll} />
+              <ActionButtonProper icon="refresh" title={t('common.reload')} onClick={loadHosts} />
             </>
           }
         >
           {isLoading ? (
-            <div className="px-5 py-2 text-[12px] text-rd-text-dim animate-pulse">Caricamento host...</div>
+            <div className="px-5 py-2 text-[12px] text-rd-text-dim animate-pulse">{t('common.loading')}</div>
           ) : (
             <div className="pt-2 pb-12 overflow-y-auto h-full">
               <TreeView
@@ -338,35 +341,35 @@ export const ConnectionsView: React.FC = () => {
             onClick={() => handleConnect(contextMenu.node)}
           >
             <Icon name="network" size={14} className="text-rd-accent" />
-            <span>Connect</span>
+            <span>{t('common.connect')}</span>
           </button>
           <div className="h-px bg-rd-border my-1" />
           <button 
             className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-2"
             onClick={() => {
-              setModalState({ type: 'host', isEdit: true, node: contextMenu.node });
+              setModalState({ isOpen: true, type: 'host', isEdit: true, node: contextMenu.node });
               setContextMenu(null);
             }}
           >
             <Icon name="settings" size={14} />
-            <span>Edit Host</span>
+            <span>{t('modals.editHost')}</span>
           </button>
         </div>
       )}
 
       <HostFormModal 
-        isOpen={modalState.type === 'host'} 
-        onClose={() => setModalState({ type: null, isEdit: false })} 
+        isOpen={modalState.isOpen && modalState.type === 'host'} 
+        onClose={() => setModalState({ isOpen: false, type: null, isEdit: false })} 
         onSave={handleSaveHost} 
         isEdit={modalState.isEdit} 
         initialData={modalState.node?.data} 
         onOpenCredentials={() => {
-          setModalState({ type: null, isEdit: false }); // Chiudi host form
+          setModalState({ isOpen: false, type: null, isEdit: false }); // Chiudi host form
           setIsCredentialsModalOpen(true);
         }}
       />
-      <FolderFormModal isOpen={modalState.type === 'folder'} onClose={() => setModalState({ type: null, isEdit: false })} onSave={handleSaveFolder} isEdit={modalState.isEdit} initialLabel={modalState.node?.label} />
-      <DeleteConfirmModal isOpen={modalState.type === 'delete'} onClose={() => setModalState({ type: null, isEdit: false })} onConfirm={handleDeleteConfirm} title={modalState.node?.id.startsWith('f-') ? 'Elimina Cartella' : 'Elimina Host'} itemName={modalState.node?.label || ''} itemType={modalState.node?.id.startsWith('f-') ? 'folder' : 'host'} />
+      <FolderFormModal isOpen={modalState.isOpen && modalState.type === 'folder'} onClose={() => setModalState({ isOpen: false, type: null, isEdit: false })} onSave={handleSaveFolder} isEdit={modalState.isEdit} initialLabel={modalState.node?.label} />
+      <DeleteConfirmModal isOpen={modalState.isOpen && modalState.type === 'delete'} onClose={() => setModalState({ isOpen: false, type: null, isEdit: false })} onConfirm={handleDeleteConfirm} title={modalState.node?.id.startsWith('f-') ? t('modals.deleteFolder') : t('modals.deleteHost')} itemName={modalState.node?.label || ''} itemType={modalState.node?.id.startsWith('f-') ? 'folder' : 'host'} />
       <LoginModal 
         isOpen={loginModal.isOpen} 
         onClose={() => setLoginModal({ isOpen: false })} 

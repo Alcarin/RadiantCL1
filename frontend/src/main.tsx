@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client'
 import './style.css'
 import App from './App'
 import { initGlobalDnd } from './lib/dnd'
+import './i18n/config'
 
 // Prepariamo il sistema DND prima di montare React (Singleton Bridge)
 initGlobalDnd();
