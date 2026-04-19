@@ -141,15 +141,15 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNode
             
             {/* Status indicator (optional) */}
             {node.data.status === 'connected' && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-rd-bg-main shadow-[0_0_5px_theme(colors.green.500)]" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-rd-sidebar shadow-[0_0_5px_theme(colors.green.500)]" />
             )}
             {node.data.status === 'disconnected' && (
-              <div className="absolute -bottom-1 -right-1 bg-rd-bg-main rounded-full flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 bg-rd-sidebar rounded-full flex items-center justify-center">
                 <Icon name="close" size={10} strokeWidth={3} className="text-red-500" />
               </div>
             )}
             {node.data.status === 'connecting' && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-yellow-500 border border-rd-bg-main animate-pulse shadow-[0_0_5px_theme(colors.yellow.500)]" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-yellow-500 border border-rd-sidebar animate-pulse shadow-[0_0_5px_theme(colors.yellow.500)]" />
             )}
           </div>
           <span className={cn(

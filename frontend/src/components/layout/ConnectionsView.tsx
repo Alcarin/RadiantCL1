@@ -92,8 +92,15 @@ export const ConnectionsView: React.FC = () => {
 
   React.useEffect(() => {
     EventsOn('terminal:sessions-updated', loadActiveConnections);
+    
+    // Listener per richieste di login dalla MenuBar
+    const offRequestLogin = EventsOn('app:request-login', (node: TreeNode) => {
+      setLoginModal({ isOpen: true, node, error: null, isConnecting: false });
+    });
+
     return () => {
       EventsOff('terminal:sessions-updated');
+      offRequestLogin();
     };
   }, [loadActiveConnections]);
 
@@ -322,7 +329,7 @@ export const ConnectionsView: React.FC = () => {
 
       {contextMenu && (
         <div 
-          className="fixed z-50 bg-rd-bg-main border border-rd-border shadow-xl rounded-md py-1 min-w-[160px]"
+          className="fixed z-50 bg-rd-dropdown border border-rd-border shadow-xl rounded-md py-1 min-w-[160px]"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >

@@ -230,7 +230,7 @@ function App() {
         mainContent={mainContent}
         bottomPanel={<div className="p-4 text-zinc-500 text-xs">Terminal / Logs Output</div>}
         statusBar={<StatusBar />}
-        topBar={<MenuBar />}
+        topBar={<MenuBar onOpenFile={handleOpenConfig} />}
         sideBarVisible={sideBarVisible}
         bottomPanelVisible={true}
       />

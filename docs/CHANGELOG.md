@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Functional Top Menu**: Replaced the mock MenuBar with a fully functional dropdown system (File, Connect, Help).
+- **Dynamic Connect Menu**: Implemented a recursive menu that mirrors the full saved hosts tree, including hierarchical folders and specific host icons.
+- **Credits Modal**: New integrated modal detailing the core technology stack (Wails, Monaco, xterm.js, etc.).
 - **Terminal Session Status Persistence**: Introduced `connected`/`disconnected` status for terminals that persists until the tab is manually closed.
 - **Dynamic Host Icons**: Support for specific host icons in terminal tabs and the sidebar for better visual identification.
 - **Expanded Icon Library**: Added over 40 networking, hardware, and infrastructure icons imported from Lucide React.
@@ -23,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Menu Snappiness**: Optimized event handling to close menus instantly upon selection, ensuring a responsive feel during async connection starts.
 - **Visual Branding**: Switched primary accent color to "Radiant Gold" (Yellow) across the entire application UI.
 - **Sidebar Aesthetics**: Applied Radiant Gold theme to all host icons for visual consistency.
 - **Sober Typography**: Reverted host labels to standard font weight and color for a more professional look.
@@ -32,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Menu Readability**: Removed transparency from top and context menus, using solid colors to prevent background text interference.
+- **CSS Variable Cleanup**: Resolved invalid `rd-bg-main` references in TreeView and status indicators, ensuring consistent theme rendering.
 - **JSON Unmarshalling**: Fixed a critical bug where `folderId` was sent as a string instead of an int64, preventing host updates.
 - **TypeScript Compilation**: Resolved missing imports and test mock inconsistencies caused by the new session metadata structure.
 - **Drag and Drop / Mouse Control**: Resolved runtime conflicts and crashes in the DND library (react-arborist vs react-mosaic-component).
