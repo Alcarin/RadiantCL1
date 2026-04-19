@@ -168,7 +168,14 @@ func (a *App) UpdateHost(h db.Host) error {
 	if a.dbManager == nil {
 		return fmt.Errorf("database not initialized")
 	}
-	return a.dbManager.UpdateHost(h)
+	err := a.dbManager.UpdateHost(h)
+	if err == nil {
+		if a.terminalService != nil {
+			a.terminalService.UpdateHostMetadata(h.ID, h.Label, h.Icon)
+		}
+		runtime.EventsEmit(a.ctx, "app:host-updated", h)
+	}
+	return err
 }
 
 // DeleteHost deletes a host from the database
@@ -207,8 +214,8 @@ func (a *App) ConnectTerminal(hostID int64, username string, password string) (s
 
 	// Recupera dati host
 	var h db.Host
-	err := a.dbManager.DB.QueryRow("SELECT id, label, address, type, port FROM hosts WHERE id = ?", hostID).Scan(
-		&h.ID, &h.Label, &h.Address, &h.Type, &h.Port)
+	err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port FROM hosts WHERE id = ?", hostID).Scan(
+		&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch host: %w", err)
 	}
@@ -216,10 +223,10 @@ func (a *App) ConnectTerminal(hostID int64, username string, password string) (s
 	sessionID := fmt.Sprintf("term-%d-%d", hostID, os.Getpid())
 	
 	if h.Type == "ssh" {
-		err = a.terminalService.ConnectSSH(sessionID, h.Label, h.Address, h.Port, username, password)
+		err = a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, username, password)
 	} else {
 		// Telnet ignora user/pass passati dalla modale poiché è interattivo nel terminale
-		err = a.terminalService.ConnectTelnet(sessionID, h.Label, h.Address, h.Port)
+		err = a.terminalService.ConnectTelnet(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port)
 	}
 
 	if err != nil {
@@ -249,7 +256,7 @@ func (a *App) ResizeTerminal(sessionID string, cols, rows int) error {
 
 // CloseTerminal chiude una sessione terminale
 func (a *App) CloseTerminal(sessionID string) {
-	a.terminalService.CloseSession(sessionID)
+	a.terminalService.RemoveSession(sessionID)
 }
 
 // MarkTerminalReady segnala che il frontend è pronto a ricevere dati per la sessione

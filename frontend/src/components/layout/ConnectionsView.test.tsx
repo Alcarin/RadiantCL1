@@ -25,7 +25,7 @@ describe('ConnectionsView', () => {
 
   it('carica le connessioni attive al montaggio', async () => {
     const mockConnections = [
-      { id: '1', name: 'Host 1', host: '1.2.3.4', type: 'ssh', status: 'connected' }
+      { id: '1', name: 'Host 1', host: '1.2.3.4', type: 'ssh', status: 'connected', icon: 'server' }
     ];
     
     vi.mocked(AppBindings.GetActiveConnections).mockResolvedValue(mockConnections);

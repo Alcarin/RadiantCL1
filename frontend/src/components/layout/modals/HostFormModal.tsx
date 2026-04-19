@@ -14,12 +14,49 @@ interface HostFormModalProps {
 
 const AVAILABLE_ICONS: IconName[] = [
   'server',
-  'terminal',
+  'computer',
+  'laptop',
+  'smartphone',
+  'router',
   'network',
+  'ethernetPort',
+  'firewall',
+  'shield',
+  'database',
+  'hardDrive',
   'cpu',
+  'usb',
+  'cable',
+  'plug',
+  'terminal',
   'activity',
   'wifi',
-  'shield',
+  'signal',
+  'antenna',
+  'satelliteDish',
+  'globe',
+  'cloud',
+  'cloudSync',
+  'keyRound',
+  'lock', // Assuming lock exists
+  'settings',
+  'plus',
+  'search',
+  'waypoints',
+  'layers',
+  'bug',
+  'rocket',
+  'plane',
+  'printer',
+  'radio',
+  'radioTower',
+  'telescope',
+  'thermometer',
+  'expand',
+  'shrink',
+  'arrowDownUp',
+  'arrowLeftRight',
+  'squareChevronRight',
   'package'
 ];
 
@@ -141,6 +178,7 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
                   key={icon}
                   type="button"
                   onClick={() => setFormData({ ...formData, icon })}
+                  title={icon}
                   className={cn(
                     "p-2 border transition-all",
                     formData.icon === icon 

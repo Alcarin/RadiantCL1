@@ -55,6 +55,9 @@ type TerminalSession struct {
 	lastDir   string // "RadiantCL1 -> Host" | "Host -> RadiantCL1"
 	timer     *time.Timer
 	dirty     bool
+	Status    string // "connected" | "disconnected"
+	Icon      string
+	HostID    int64
 }
 
 // SessionInfo è il DTO per il frontend
@@ -64,6 +67,7 @@ type SessionInfo struct {
 	Host    string `json:"host"`
 	Type    string `json:"type"`
 	Status  string `json:"status"`
+	Icon    string `json:"icon"`
 }
 
 type TerminalService struct {
@@ -99,7 +103,7 @@ func (s *TerminalService) logError(format string, args ...interface{}) {
 }
 
 // ConnectSSH avvia una connessione SSH
-func (s *TerminalService) ConnectSSH(id string, name string, address string, port int, user string, password string) error {
+func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string) error {
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -170,6 +174,9 @@ func (s *TerminalService) ConnectSSH(id string, name string, address string, por
 		Writer:     stdin,
 		Ctx:        ctx,
 		Cancel:     cancel,
+		Status:     "connected",
+		Icon:       icon,
+		HostID:     hostID,
 	}
 
 	// Setup logging
@@ -195,7 +202,7 @@ func (s *TerminalService) ConnectSSH(id string, name string, address string, por
 }
 
 // ConnectTelnet avvia una connessione Telnet con negoziazione base
-func (s *TerminalService) ConnectTelnet(id string, name string, address string, port int) error {
+func (s *TerminalService) ConnectTelnet(id string, hostID int64, name string, icon string, address string, port int) error {
 	addr := fmt.Sprintf("%s:%d", address, port)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -212,6 +219,9 @@ func (s *TerminalService) ConnectTelnet(id string, name string, address string, 
 		Writer:  conn,
 		Ctx:     ctx,
 		Cancel:  cancel,
+		Status:  "connected",
+		Icon:    icon,
+		HostID:  hostID,
 	}
 
 	// Setup logging
@@ -374,17 +384,33 @@ func (s *TerminalService) GetSessions() []SessionInfo {
 			Name:   ts.Name,
 			Host:   ts.Address,
 			Type:   ts.Type,
-			Status: "connected",
+			Status: ts.Status,
+			Icon:   ts.Icon,
 		})
 	}
 	return sessions
+}
+
+func (s *TerminalService) RemoveSession(id string) {
+	s.mu.Lock()
+	ts, ok := s.sessions[id]
+	if ok {
+		delete(s.sessions, id)
+	}
+	s.mu.Unlock()
+
+	if ok && ts.Status == "connected" {
+		s.CloseSession(id)
+	}
+
+	s.emit("terminal:sessions-updated")
 }
 
 func (s *TerminalService) CloseSession(id string) {
 	s.mu.Lock()
 	ts, ok := s.sessions[id]
 	if ok {
-		delete(s.sessions, id)
+		ts.Status = "disconnected"
 	}
 	s.mu.Unlock()
 
@@ -408,6 +434,25 @@ func (s *TerminalService) CloseSession(id string) {
 			}
 		}
 		s.emit("terminal:closed:"+id)
+		s.emit("terminal:sessions-updated")
+	}
+}
+
+// UpdateHostMetadata aggiorna il nome e l'icona per tutte le sessioni associate a un hostID
+func (s *TerminalService) UpdateHostMetadata(hostID int64, name, icon string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	updated := false
+	for _, ts := range s.sessions {
+		if ts.HostID == hostID {
+			ts.Name = name
+			ts.Icon = icon
+			updated = true
+		}
+	}
+
+	if updated {
 		s.emit("terminal:sessions-updated")
 	}
 }

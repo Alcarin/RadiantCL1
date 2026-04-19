@@ -10,6 +10,7 @@ interface Tab {
   type?: 'editor' | 'terminal';
   sessionId?: string;
   isModified?: boolean;
+  icon?: any; // IconName from TreeView/Icon
 }
 
 interface EditorGroupProps {
@@ -57,7 +58,7 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
 
               {/* File/Terminal icon */}
               <Icon
-                name={tab.type === 'terminal' ? 'terminal' : 'file'}
+                name={tab.icon || (tab.type === 'terminal' ? 'terminal' : 'file')}
                 size={14}
                 className={cn(
                   isActive ? 'text-rd-text-active' : 'text-rd-text-dim',

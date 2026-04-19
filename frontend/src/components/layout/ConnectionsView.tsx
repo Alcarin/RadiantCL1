@@ -153,7 +153,8 @@ export const ConnectionsView: React.FC = () => {
        EventsEmit('app:open-terminal', { 
          sessionId, 
          name: node.label,
-         hostId 
+         hostId,
+         icon: node.icon || 'terminal'
        });
        setLoginModal({ isOpen: false });
      } catch (err) {
@@ -195,8 +196,9 @@ export const ConnectionsView: React.FC = () => {
     return activeConnections.map(c => ({
       id: c.id,
       label: c.name,
-      icon: 'network' as IconName,
-      data: { ...c, label: c.name, icon: 'network' }
+      status: c.status,
+      icon: (c.icon || 'network') as IconName,
+      data: { ...c, label: c.name, icon: c.icon || 'network' }
     }));
   }, [activeConnections]);
 

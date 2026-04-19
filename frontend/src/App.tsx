@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { OpenConfig } from '../wailsjs/go/main/App';
-import { main } from '../wailsjs/go/models';
+import { main, db } from '../wailsjs/go/models';
 import { ASTNodeView } from './components/ASTNodeView';
 
 import { Layout } from './components/layout/Layout';
@@ -12,7 +12,7 @@ import { MenuBar } from './components/layout/MenuBar';
 import { EditorMosaic, MosaicId } from './components/layout/EditorMosaic';
 import { EditorGroup } from './components/layout/EditorGroup';
 import { TreeView, TreeNode } from './components/ui/TreeView';
-import { Icon } from './components/ui/Icon';
+import { Icon, IconName } from './components/ui/Icon';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MosaicNode } from 'react-mosaic-component';
 import { ConnectionsView } from './components/layout/ConnectionsView';
@@ -29,6 +29,7 @@ interface OpenTab {
   content?: string; // For editor
   sessionId?: string; // For terminal
   hostId?: number; // Optional reference
+  icon?: IconName; // Host specific icon
   ast?: any; // For cisco config AST
 }
 
@@ -46,7 +47,7 @@ function App() {
 
   // Listen for terminal open events
   useEffect(() => {
-    const handleOpenTerminal = (data: { sessionId: string, name: string, hostId: number }) => {
+    const handleOpenTerminal = (data: { sessionId: string, name: string, hostId: number, icon: IconName }) => {
       const tabId = `term-${data.sessionId}`;
       
       setOpenTabs(prev => {
@@ -62,7 +63,8 @@ function App() {
           name: data.name,
           type: 'terminal',
           sessionId: data.sessionId,
-          hostId: data.hostId
+          hostId: data.hostId,
+          icon: data.icon
         };
         return [...prev, newTab];
       });
@@ -70,8 +72,25 @@ function App() {
       setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
     };
 
+    const handleHostUpdated = (updatedHost: db.Host) => {
+      setOpenTabs(prev => prev.map(tab => {
+        if (tab.hostId === updatedHost.id) {
+          return {
+            ...tab,
+            name: updatedHost.label,
+            icon: updatedHost.icon as IconName
+          };
+        }
+        return tab;
+      }));
+    };
+
     EventsOn('app:open-terminal', handleOpenTerminal);
-    return () => EventsOff('app:open-terminal');
+    EventsOn('app:host-updated', handleHostUpdated);
+    return () => {
+      EventsOff('app:open-terminal');
+      EventsOff('app:host-updated');
+    };
   }, []);
 
   // Handlers
@@ -189,7 +208,8 @@ function App() {
               id: t.id, 
               name: t.name, 
               type: t.type, 
-              sessionId: t.sessionId 
+              sessionId: t.sessionId,
+              icon: t.icon
             }))}
             activeTabId={activeTabPerGroup[groupId] || ''}
             onTabSelect={(id) => setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }))}

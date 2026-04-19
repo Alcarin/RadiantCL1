@@ -29,6 +29,46 @@ import {
   FolderOpen,
   FolderPlus,
   FoldVertical,
+  BrickWall,
+  Router,
+  EthernetPort,
+  Waypoints,
+  ArrowDownUp,
+  CloudSync,
+  ArrowLeftRight,
+  Shrink,
+  Expand,
+  Antenna,
+  Phone,
+  Bluetooth,
+  Cable,
+  Satellite,
+  SatelliteDish,
+  Signal,
+  Layers,
+  Bug,
+  Monitor,
+  Database,
+  Container,
+  HardDrive,
+  Plug,
+  Rocket,
+  SquareChevronRight,
+  Telescope,
+  Laptop,
+  Printer,
+  Radio,
+  RadioTower,
+  Smartphone,
+  Usb,
+  Globe,
+  Plane,
+  KeyRound,
+  Cloud,
+  CloudSun,
+  Thermometer,
+  Lock,
+  Tablet,
 } from 'lucide-react';
 
 export type IconName =
@@ -60,7 +100,48 @@ export type IconName =
   | 'alertTriangle'
   | 'info'
   | 'wifi'
-  | 'refresh';
+  | 'refresh'
+  | 'brickWall'
+  | 'firewall' // Alias for brick-wall-fire
+  | 'router'
+  | 'ethernetPort'
+  | 'waypoints'
+  | 'arrowDownUp'
+  | 'cloudSync'
+  | 'arrowLeftRight'
+  | 'shrink'
+  | 'expand'
+  | 'antenna'
+  | 'phone'
+  | 'bluetooth'
+  | 'cable'
+  | 'satellite'
+  | 'satelliteDish'
+  | 'signal'
+  | 'layers'
+  | 'bug'
+  | 'computer' // Alias for Monitor
+  | 'database'
+  | 'container'
+  | 'hardDrive'
+  | 'plug'
+  | 'rocket'
+  | 'squareChevronRight'
+  | 'telescope'
+  | 'laptop'
+  | 'printer'
+  | 'radio'
+  | 'radioTower'
+  | 'smartphone'
+  | 'usb'
+  | 'globe'
+  | 'plane'
+  | 'keyRound'
+  | 'cloud'
+  | 'cloudSun'
+  | 'thermometer'
+  | 'lock'
+  | 'tablet';
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
@@ -92,6 +173,47 @@ const icons: Record<IconName, React.ElementType> = {
   info: Info,
   wifi: Wifi,
   refresh: RefreshCw,
+  brickWall: BrickWall,
+  firewall: BrickWall,
+  router: Router,
+  ethernetPort: EthernetPort,
+  waypoints: Waypoints,
+  arrowDownUp: ArrowDownUp,
+  cloudSync: CloudSync,
+  arrowLeftRight: ArrowLeftRight,
+  shrink: Shrink,
+  expand: Expand,
+  antenna: Antenna,
+  phone: Phone,
+  bluetooth: Bluetooth,
+  cable: Cable,
+  satellite: Satellite,
+  satelliteDish: SatelliteDish,
+  signal: Signal,
+  layers: Layers,
+  bug: Bug,
+  computer: Monitor,
+  database: Database,
+  container: Container,
+  hardDrive: HardDrive,
+  plug: Plug,
+  rocket: Rocket,
+  squareChevronRight: SquareChevronRight,
+  telescope: Telescope,
+  laptop: Laptop,
+  printer: Printer,
+  radio: Radio,
+  radioTower: RadioTower,
+  smartphone: Smartphone,
+  usb: Usb,
+  globe: Globe,
+  plane: Plane,
+  keyRound: KeyRound,
+  cloud: Cloud,
+  cloudSun: CloudSun,
+  thermometer: Thermometer,
+  lock: Lock,
+  tablet: Tablet,
 };
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {

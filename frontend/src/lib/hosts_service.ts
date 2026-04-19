@@ -137,7 +137,6 @@ export const HostsService = {
         data: {
           ...f,
           isFolder: true,
-          parentId: f.parentId ? `f-${f.parentId}` : null,
         }
       };
     });
@@ -152,7 +151,6 @@ export const HostsService = {
         data: {
           ...h,
           isFolder: false,
-          folderId: h.folderId ? `f-${h.folderId}` : null,
         }
       };
     });

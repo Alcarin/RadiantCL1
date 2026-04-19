@@ -120,7 +120,15 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNode
         <div className="flex items-center gap-1.5 min-w-0">
           <div className="relative shrink-0">
             {node.data.icon ? (
-              <Icon name={node.data.icon} size={14} className="text-rd-text-dim" />
+              <Icon 
+                name={node.data.icon} 
+                size={14} 
+                className={cn(
+                  node.data.status === 'disconnected' 
+                    ? 'text-rd-text-dim opacity-60' 
+                    : 'text-rd-accent'
+                )} 
+              />
             ) : isFolder ? (
               <Icon
                 name={isExpanded ? 'folderOpen' : 'folder'}
@@ -128,18 +136,26 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNode
                 className="text-[#dcb67a]"
               />
             ) : (
-              <Icon name="file" size={14} className="text-rd-text-dim" />
+              <Icon name="file" size={14} className="text-rd-accent opacity-80" />
             )}
             
             {/* Status indicator (optional) */}
             {node.data.status === 'connected' && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-rd-bg-main" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-rd-bg-main shadow-[0_0_5px_theme(colors.green.500)]" />
+            )}
+            {node.data.status === 'disconnected' && (
+              <div className="absolute -bottom-1 -right-1 bg-rd-bg-main rounded-full flex items-center justify-center">
+                <Icon name="close" size={10} strokeWidth={3} className="text-red-500" />
+              </div>
             )}
             {node.data.status === 'connecting' && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-yellow-500 border border-rd-bg-main animate-pulse" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-yellow-500 border border-rd-bg-main animate-pulse shadow-[0_0_5px_theme(colors.yellow.500)]" />
             )}
           </div>
-          <span className="truncate text-[13px] leading-[22px]">
+          <span className={cn(
+            "truncate text-[13px] leading-[22px]",
+            node.data.status === 'disconnected' && "text-rd-text-dim italic opacity-80"
+          )}>
             {node.data.label}
           </span>
         </div>
