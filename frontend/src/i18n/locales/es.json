@@ -54,7 +54,16 @@
     "spaces": "Espacios: 2",
     "encoding": "UTF-8",
     "file": "Archivo",
-    "credentialManager": "Gestor de Credenciales"
+    "credentialManager": "Gestor de Credenciales",
+    "osIntegration": "Integración OS",
+    "protocolHandlers": "Gestores de Protocolo",
+    "registerProtocols": "Registrar enlaces ssh:// y telnet://",
+    "unregisterProtocols": "Eliminar registro",
+    "protocolsActive": "Gestión de enlaces activa",
+    "protocolsPathMismatch": "Registrado en otra ruta",
+    "protocolsNotRegistered": "No registrado",
+    "updatePath": "Actualizar ruta",
+    "osIntegrationDesc": "Permite que RadiantCL1 gestione los enlaces ssh:// e telnet:// clicados desde el navegador u otras apps."
   },
   "modals": {
     "editHost": "Editar Host",

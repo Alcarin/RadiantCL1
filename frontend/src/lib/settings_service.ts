@@ -1,4 +1,5 @@
-import { GetSetting, SaveSetting } from '../../wailsjs/go/main/App';
+import { GetSetting, SaveSetting, GetProtocolStatus, RegisterProtocolHandlers, UnregisterProtocolHandlers } from '../../wailsjs/go/main/App';
+import { osutils } from '../../wailsjs/go/models';
 
 export class SettingsService {
   /**
@@ -34,5 +35,41 @@ export class SettingsService {
 
   static async saveLanguage(lang: string): Promise<void> {
     await this.saveSetting('language', lang);
+  }
+
+  /**
+   * Recupera lo stato dei protocolli OS
+   */
+  static async getProtocolStatus(): Promise<osutils.ProtocolStatus> {
+    try {
+      return await GetProtocolStatus();
+    } catch (err) {
+      console.error('Failed to get protocol status:', err);
+      return { registered: false, pathMatch: false, currentPath: '', details: 'Errore recupero stato' };
+    }
+  }
+
+  /**
+   * Registra i protocolli nel sistema
+   */
+  static async registerProtocols(): Promise<void> {
+    try {
+      await RegisterProtocolHandlers();
+    } catch (err) {
+      console.error('Failed to register protocols:', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Rimuove la registrazione dei protocolli
+   */
+  static async unregisterProtocols(): Promise<void> {
+    try {
+      await UnregisterProtocolHandlers();
+    } catch (err) {
+      console.error('Failed to unregister protocols:', err);
+      throw err;
+    }
   }
 }

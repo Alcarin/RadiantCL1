@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OS Protocol Handlers**: Integrated support for `ssh://` and `telnet://` URIs, allowing the application to be launched directly from external links.
+- **Cross-Platform Registration**: Implemented registration handlers for Windows Registry, Linux `.desktop` files, and macOS bundle integration.
+- **Single Instance Support**: Configured Wails `SingleInstanceLock` to route protocol requests to an already running instance instead of spawning duplicates.
+- **Intelligent Conflict Resolution**: New modal logic that identifies existing host configurations and resolves credential mismatches before connecting.
+- **Path Mismatch Detection**: Real-time verification of the registered executable path with automated update capabilities integrated into the Preferences UI.
 - **Multilingual Support (i18n)**: Implemented full internationalization support for English, Italian, French, Spanish, and German.
 - **Preferences Manager**: New modal for user settings, starting with real-time language switching.
 - **Settings Persistence**: Backend synchronization for user preferences, stored in the SQLite database.
@@ -44,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Icon Type Safety**: Resolved TypeScript compiler errors caused by missing icon mappings and naming inconsistencies in `Icon.tsx` and `PreferencesModal.tsx`.
 - **Type Compatibility**: Resolved critical compiler errors between `i18next` and legacy TypeScript by upgrading the project to TypeScript 5.
 - **UI Regressions**: Fixed missing state hooks and type mismatches in `ConnectionsView.tsx` and `App.tsx` during the translation refactor.
 - **Modal Window Interaction**: Resolved an issue where double-clicking within modals (Preferences, Credential Manager) would trigger window maximization by implementing event bubbling suppression.

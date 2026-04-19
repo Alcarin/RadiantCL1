@@ -247,3 +247,25 @@ func (m *Manager) MoveFolder(id int64, parentID *int64, sortOrder int) error {
 func (m *Manager) MoveHost(id int64, folderID *int64, sortOrder int) error {
 	return m.moveItem(id, "host", folderID, sortOrder)
 }
+
+// GetHostByAddress retrieves a host by its address (IP or FQDN).
+func (m *Manager) GetHostByAddress(address string) (*Host, error) {
+	var h Host
+	var fid, cid *int64
+	err := m.DB.QueryRow(`
+		SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order 
+		FROM hosts 
+		WHERE LOWER(address) = LOWER(?) 
+		LIMIT 1`, address).Scan(
+		&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder)
+	
+	if err == sql.ErrNoRows {
+		return nil, nil // Not found is not an error here
+	}
+	if err != nil {
+		return nil, err
+	}
+	h.FolderID = fid
+	h.CredentialID = cid
+	return &h, nil
+}

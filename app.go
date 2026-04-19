@@ -4,13 +4,18 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 	"path/filepath"
 
 	"radiantcl1/backend/db"
+	"radiantcl1/backend/osutils"
 	"radiantcl1/backend/protocols"
 	"radiantcl1/backend/vault"
 	"radiantcl1/parser"
+
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
+	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -48,6 +53,18 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize vault service
 	a.vaultService = vault.NewVaultService()
+
+	// Check if started with a URL
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+		if strings.HasPrefix(arg, "ssh://") || strings.HasPrefix(arg, "telnet://") {
+			go func() {
+				// Attendi che il frontend sia pronto prima di gestire l'URL
+				time.Sleep(2 * time.Second)
+				a.HandleURL(arg)
+			}()
+		}
+	}
 }
 
 // shutdown is called when the application is terminating
@@ -191,6 +208,40 @@ func (a *App) DeleteHost(id int64) error {
 	return a.dbManager.DeleteHost(id)
 }
 
+// GetHostByAddress restituisce un host dato l'indirizzo IP o FQDN
+func (a *App) GetHostByAddress(address string) (*db.Host, error) {
+	if a.dbManager == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.GetHostByAddress(address)
+}
+
+type HostWithCredentials struct {
+	Host     *db.Host `json:"host"`
+	Username string   `json:"username"`
+}
+
+// GetHostWithCredentials recupera host e username associato (se presente)
+func (a *App) GetHostWithCredentials(address string) (*HostWithCredentials, error) {
+	h, err := a.GetHostByAddress(address)
+	if err != nil || h == nil {
+		return nil, err
+	}
+
+	username := ""
+	if h.CredentialID != nil {
+		user, _, err := a.vaultService.GetPassword(*h.CredentialID)
+		if err == nil {
+			username = user
+		}
+	}
+
+	return &HostWithCredentials{
+		Host:     h,
+		Username: username,
+	}, nil
+}
+
 // MoveItem moves a folder or a host to a new parent/folder and updates its sort order
 func (a *App) MoveItem(itemType string, id int64, targetFolderID int64, sortOrder int) error {
 	if a.dbManager == nil {
@@ -230,8 +281,8 @@ func (a *App) ConnectTerminal(hostID int64, username string, password string) (s
 	finalUser := username
 	finalPass := password
 
-	// 2. Se l'host ha un profilo associato, usalo
-	if h.CredentialID != nil {
+	// 2. Se l'utente non è fornito esplicitamente, usa il profilo salvato (se presente)
+	if finalUser == "" && h.CredentialID != nil {
 		savedUser, savedPass, err := a.vaultService.GetPassword(*h.CredentialID)
 		if err == nil {
 			finalUser = savedUser
@@ -360,5 +411,49 @@ func (a *App) SaveSetting(key string, value string) error {
 		return fmt.Errorf("database not initialized")
 	}
 	return a.dbManager.SaveSetting(key, value)
+}
+
+// OS INTEGRATION - PROTOCOL HANDLERS
+
+// GetProtocolStatus restituisce lo stato dei protocolli nel sistema
+func (a *App) GetProtocolStatus() (osutils.ProtocolStatus, error) {
+	return osutils.GetStatus()
+}
+
+// RegisterProtocolHandlers registra l'app per gestire ssh:// e telnet://
+func (a *App) RegisterProtocolHandlers() error {
+	return osutils.Register()
+}
+
+// UnregisterProtocolHandlers rimuove la registrazione
+func (a *App) UnregisterProtocolHandlers() error {
+	return osutils.Unregister()
+}
+
+// HandleSecondInstance gestisce l'apertura di una seconda istanza tramite URL
+func (a *App) HandleSecondInstance(data options.SecondInstanceData) {
+	if len(data.Args) > 0 {
+		for _, arg := range data.Args {
+			if strings.HasPrefix(arg, "ssh://") || strings.HasPrefix(arg, "telnet://") {
+				runtime.WindowUnminimise(a.ctx)
+				runtime.WindowShow(a.ctx)
+				a.HandleURL(arg)
+				break
+			}
+		}
+	}
+}
+
+// HandleURL analizza un URL ed emette un evento per il frontend
+func (a *App) HandleURL(rawURL string) error {
+	parts, err := osutils.ParseURL(rawURL)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Failed to parse URL %s: %v", rawURL, err)
+		return err
+	}
+
+	// Emette l'evento per il frontend invece di connettersi direttamente
+	runtime.EventsEmit(a.ctx, "app:protocol-request", parts)
+	return nil
 }
 

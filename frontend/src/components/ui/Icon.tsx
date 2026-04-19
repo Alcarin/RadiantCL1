@@ -71,6 +71,9 @@ import {
   Tablet,
   Eye,
   EyeOff,
+  Trash2,
+  ShieldOff,
+  ShieldCheck,
 } from 'lucide-react';
 
 export type IconName =
@@ -145,7 +148,11 @@ export type IconName =
   | 'lock'
   | 'tablet'
   | 'eye'
-  | 'eyeOff';
+  | 'eyeOff'
+  | 'trash'
+  | 'shieldOff'
+  | 'shieldCheck'
+  | 'refreshCw';
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
@@ -220,6 +227,10 @@ const icons: Record<IconName, React.ElementType> = {
   tablet: Tablet,
   eye: Eye,
   eyeOff: EyeOff,
+  trash: Trash2,
+  shieldOff: ShieldOff,
+  shieldCheck: ShieldCheck,
+  refreshCw: RefreshCw,
 };
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {

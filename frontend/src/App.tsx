@@ -35,9 +35,10 @@ interface OpenTab {
   ast?: any; // For cisco config AST
 }
 
-import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff, LogError } from '../wailsjs/runtime/runtime';
 import { useEffect } from 'react';
-import { CloseTerminal } from '../wailsjs/go/main/App';
+import { CloseTerminal, ConnectTerminal, GetHostWithCredentials } from '../wailsjs/go/main/App';
+import { ProtocolConnectModal, ProtocolRequestData } from './components/layout/modals/ProtocolConnectModal';
 
 function App() {
   // State
@@ -47,6 +48,19 @@ function App() {
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
   const [sideBarVisible, setSideBarVisible] = useState(true);
   const { t, i18n } = useTranslation();
+
+  // Protocol Request State
+  const [protocolRequest, setProtocolRequest] = useState<{
+    isOpen: boolean;
+    data: ProtocolRequestData | null;
+    existingHost: db.Host | null;
+    savedUsername: string;
+  }>({
+    isOpen: false,
+    data: null,
+    existingHost: null,
+    savedUsername: ''
+  });
 
   // Load language on startup
   useEffect(() => {
@@ -59,33 +73,33 @@ function App() {
     loadLang();
   }, [i18n]);
 
+  const handleOpenTerminal = (data: { sessionId: string, name: string, hostId: number, icon: IconName }) => {
+    const tabId = `term-${data.sessionId}`;
+    
+    setOpenTabs(prev => {
+      // Evita di riaprire lo stesso terminale se già aperto (opzionale)
+      const alreadyOpen = prev.find(t => t.sessionId === data.sessionId);
+      if (alreadyOpen) {
+        setActiveTabPerGroup(pg => ({ ...pg, 'main-group': alreadyOpen.id }));
+        return prev;
+      }
+
+      const newTab: OpenTab = {
+        id: tabId,
+        name: data.name,
+        type: 'terminal',
+        sessionId: data.sessionId,
+        hostId: data.hostId,
+        icon: data.icon
+      };
+      return [...prev, newTab];
+    });
+    
+    setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
+  };
+
   // Listen for terminal open events
   useEffect(() => {
-    const handleOpenTerminal = (data: { sessionId: string, name: string, hostId: number, icon: IconName }) => {
-      const tabId = `term-${data.sessionId}`;
-      
-      setOpenTabs(prev => {
-        // Evita di riaprire lo stesso terminale se già aperto (opzionale)
-        const alreadyOpen = prev.find(t => t.sessionId === data.sessionId);
-        if (alreadyOpen) {
-          setActiveTabPerGroup(pg => ({ ...pg, 'main-group': alreadyOpen.id }));
-          return prev;
-        }
-
-        const newTab: OpenTab = {
-          id: tabId,
-          name: data.name,
-          type: 'terminal',
-          sessionId: data.sessionId,
-          hostId: data.hostId,
-          icon: data.icon
-        };
-        return [...prev, newTab];
-      });
-      
-      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
-    };
-
     const handleHostUpdated = (updatedHost: db.Host) => {
       setOpenTabs(prev => prev.map(tab => {
         if (tab.hostId === updatedHost.id) {
@@ -99,11 +113,54 @@ function App() {
       }));
     };
 
+    const handleProtocolRequest = async (parts: ProtocolRequestData) => {
+      try {
+        const match = await GetHostWithCredentials(parts.host);
+        
+        if (match && match.host) {
+          // Se l'utente non è specificato nel link OR è uguale a quello salvato -> connetti subito
+          if (!parts.user || parts.user === match.username) {
+            const sessionId = await ConnectTerminal(match.host.id, '', '');
+            handleOpenTerminal({ 
+              sessionId, 
+              name: match.host.label, 
+              hostId: match.host.id, 
+              icon: match.host.icon as IconName 
+            });
+            return;
+          }
+
+          // Altrimenti chiedi all'utente
+          setProtocolRequest({
+            isOpen: true,
+            data: parts,
+            existingHost: match.host,
+            savedUsername: match.username
+          });
+        } else {
+          // Nessun host trovato: connessione veloce immediata (per ora)
+          // Nota: lo 0 come hostID indica una connessione non persistita
+          const sessionName = parts.user ? `${parts.user}@${parts.host}` : parts.host;
+          const sessionId = await ConnectTerminal(0, parts.user || '', parts.password || '');
+          handleOpenTerminal({ 
+            sessionId, 
+            name: sessionName, 
+            hostId: 0, 
+            icon: 'terminal' 
+          });
+        }
+      } catch (err) {
+        LogError(`Failed to handle protocol request: ${err}`);
+      }
+    };
+
     EventsOn('app:open-terminal', handleOpenTerminal);
     EventsOn('app:host-updated', handleHostUpdated);
+    EventsOn('app:protocol-request', handleProtocolRequest);
     return () => {
       EventsOff('app:open-terminal');
       EventsOff('app:host-updated');
+      EventsOff('app:protocol-request');
     };
   }, []);
 
@@ -253,6 +310,34 @@ function App() {
         topBar={<MenuBar onOpenFile={handleOpenConfig} />}
         sideBarVisible={sideBarVisible}
         bottomPanelVisible={true}
+      />
+
+      <ProtocolConnectModal 
+        isOpen={protocolRequest.isOpen}
+        onClose={() => setProtocolRequest(prev => ({ ...prev, isOpen: false }))}
+        data={protocolRequest.data}
+        existingHost={protocolRequest.existingHost}
+        savedUsername={protocolRequest.savedUsername}
+        onConfirm={async (useSaved) => {
+          if (!protocolRequest.data || !protocolRequest.existingHost) return;
+          
+          const { data, existingHost } = protocolRequest;
+          const user = useSaved ? '' : (data.user || '');
+          const pass = useSaved ? '' : (data.password || '');
+          
+          try {
+            const sessionId = await ConnectTerminal(existingHost.id, user, pass);
+            handleOpenTerminal({
+              sessionId,
+              name: existingHost.label,
+              hostId: existingHost.id,
+              icon: existingHost.icon as IconName
+            });
+          } catch (err) {
+            console.error(err);
+          }
+          setProtocolRequest(prev => ({ ...prev, isOpen: false }));
+        }}
       />
     </DndProvider>
   );

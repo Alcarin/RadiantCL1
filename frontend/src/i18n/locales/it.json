@@ -54,7 +54,16 @@
     "spaces": "Spazi: 2",
     "encoding": "UTF-8",
     "file": "File",
-    "credentialManager": "Gestore Credenziali"
+    "credentialManager": "Gestore Credenziali",
+    "osIntegration": "Integrazione OS",
+    "protocolHandlers": "Gestori Protocollo",
+    "registerProtocols": "Registra link ssh:// e telnet://",
+    "unregisterProtocols": "Rimuovi registrazione",
+    "protocolsActive": "Gestione link attiva",
+    "protocolsPathMismatch": "Registrato a un altro percorso",
+    "protocolsNotRegistered": "Non registrato",
+    "updatePath": "Aggiorna percorso",
+    "osIntegrationDesc": "Consente a RadiantCL1 di gestire i link ssh:// e telnet:// cliccati dal browser o da altre app."
   },
   "modals": {
     "editHost": "Modifica Host",
@@ -83,7 +92,16 @@
     "hidePassword": "Nascondi password",
     "edit": "Modifica",
     "delete": "Elimina",
-    "editingNotice": "Stai modificando un profilo esistente. Se cambi la password, verrà aggiornata per tutti gli host associati. Lascia il campo password vuoto per mantenere quella attuale."
+    "editingNotice": "Stai modificando un profilo esistente. Se cambi la password, verrà aggiornata per tutti gli host associati. Lascia il campo password vuoto per mantenere quella attuale.",
+    "protocolRequest": {
+      "title": "Richiesta di Connessione",
+      "hostFound": "Abbiamo trovato un host configurato per l'indirizzo {{address}}.",
+      "credentialMismatch": "Il link specifica l'utente '{{linkUser}}', ma hai salvato '{{savedUser}}'.",
+      "differentPort": "Il link specifica la porta {{linkPort}}, ma hai salvato la porta {{savedPort}}.",
+      "useSaved": "Usa Configurazione Salvata",
+      "useLink": "Usa Parametri del Link",
+      "askCredential": "Vuoi procedere con la connessione?"
+    }
   },
   "credits": {
     "wailsDesc": "Framework App Desktop (Go + React)",

@@ -54,7 +54,16 @@
     "spaces": "Spaces: 2",
     "encoding": "UTF-8",
     "file": "File",
-    "credentialManager": "Credential Manager"
+    "credentialManager": "Credential Manager",
+    "osIntegration": "OS Integration",
+    "protocolHandlers": "Protocol Handlers",
+    "registerProtocols": "Register ssh:// and telnet:// links",
+    "unregisterProtocols": "Remove registration",
+    "protocolsActive": "Protocols active",
+    "protocolsPathMismatch": "Registered to another path",
+    "protocolsNotRegistered": "Not registered",
+    "updatePath": "Update path",
+    "osIntegrationDesc": "Allows RadiantCL1 to handle ssh:// and telnet:// links clicked from the browser or other apps."
   },
   "modals": {
     "editHost": "Edit Host",
@@ -83,7 +92,16 @@
     "hidePassword": "Hide password",
     "edit": "Edit",
     "delete": "Delete",
-    "editingNotice": "You are editing an existing profile. If you change the password, it will be updated for all associated hosts. Leave the password field empty to keep the current one."
+    "editingNotice": "You are editing an existing profile. If you change the password, it will be updated for all associated hosts. Leave the password field empty to keep the current one.",
+    "protocolRequest": {
+      "title": "Connection Request",
+      "hostFound": "We found a configured host for the address {{address}}.",
+      "credentialMismatch": "The link specifies user '{{linkUser}}', but you have saved '{{savedUser}}'.",
+      "differentPort": "The link specifies port {{linkPort}}, but you have saved port {{savedPort}}.",
+      "useSaved": "Use Saved Configuration",
+      "useLink": "Use Link Parameters",
+      "askCredential": "Do you want to proceed with the connection?"
+    }
   },
   "credits": {
     "wailsDesc": "Desktop App Framework (Go + React)",

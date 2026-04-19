@@ -27,6 +27,12 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "radiantcl1-5f3e-4b2a-9d1c-7b4a2e8c9d0f",
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				app.HandleSecondInstance(data)
+			},
+		},
 		Bind: []interface{}{
 			app,
 		},

@@ -45,7 +45,7 @@ L'engine in Go funge da **Middleware Semantico** (The Seldon Engine) con capacit
 * **Auto-Discovery Engine:** All'handshake SSH, invia automaticamente una sequenza di comandi discovery (`sh run`, `sh ip route`, `sh inventory`, ecc.) e popola l'Analytic Index in background.
 * **Anti-Lockout Logic:** Analizza l'input dell'utente prima dell'invio. Se il comando impatta il "Management Path" (IP sorgente o interfaccia di ingresso), intercetta l'invio e richiede una conferma esplicita.
 * **Syslog Redirector:** Riconosce i pattern dei messaggi `%SYS-` e li invia a un thread Wails separato per la visualizzazione in una sidebar dedicata ai log.
-* **Protocol Handler:** Registrazione a livello OS per gestire schemi URI `ssh://`, `telnet://` e il protocollo custom `rad://`.
+* **Protocol Handler:** Registrazione a livello OS per gestire schemi URI `ssh://`, `telnet://`.
 
 ---
 
