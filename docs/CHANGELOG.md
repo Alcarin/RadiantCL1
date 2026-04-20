@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Legacy SSH Protocol Support**: Added opt-in support for obsolete security algorithms (e.g., diffie-hellman-group1-sha1, ssh-rsa) to enable connections with legacy networking equipment.
+- **Security Warning Modal**: New interactive dialog that appears during SSH handshake failures, allowing users to authorize deprecated protocols for the current session or permanently for the host.
+- **Pre-authorization Toggle**: Added "Authorize deprecated security protocols" checkbox to the Host creation/edit modal for proactive configuration of legacy devices.
 - **Connection Progress Modal**: New real-time visual feedback for SSH and Telnet connections, providing granular log steps (TCP, Handshake, Authentication, etc.).
 - **Asynchronous Protocol Handlers**: Refactored backend connection logic to support background execution and progress events for improved UI responsiveness.
 - **Connection Abort Support**: Added the ability to prematurely terminate pending or active terminal connections directly from the progress modal.
@@ -47,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Session List Visibility**: The "Active Connections" sidebar now strictly filters for successfully established sessions, preventing "phantom" or failed connection attempts from cluttering the UI.
+- **Refined handshaking logic**: SSH connection workflow now attempts modern protocols first and only escalates to legacy algorithms upon explicit user authorization.
 - **Internationalization Consistency**: Standardized the `credentialManager` translation key across all supported languages (EN, IT, ES, FR, DE) within the `common` namespace.
 - **Protocol Data Consistency**: Migrated protocol handler event emission to explicit string maps to resolve Go/JS case-sensitivity conflicts.
 - **Connection Synchronization**: Introduced a 250ms delay in connection start to ensure the frontend listener is ready for progress events.
@@ -63,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Resource Leak Prevention**: Ensured all TCP sockets and SSH clients are explicitly closed in `RemoveSession`, even for connection attempts that failed during the initial handshake stage.
 - **Icon Type Safety**: Resolved TypeScript compiler errors caused by missing icon mappings and naming inconsistencies in `Icon.tsx` and `PreferencesModal.tsx`.
 - **Type Compatibility**: Resolved critical compiler errors between `i18next` and legacy TypeScript by upgrading the project to TypeScript 5.
 - **UI Regressions**: Fixed missing state hooks and type mismatches in `ConnectionsView.tsx` and `App.tsx` during the translation refactor.

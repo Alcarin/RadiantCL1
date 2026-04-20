@@ -21,6 +21,8 @@
     "protocol": "Protokoll",
     "port": "Port",
     "credentialProfile": "Anmeldeprofil",
+    "allowDeprecated": "Veraltete Sicherheitsprotokolle autorisieren",
+    "allowDeprecatedHelp": "Unterstützung für veraltete SSH-Algorithmen aktivieren (z. B. diffie-hellman-group1-sha1, ssh-rsa).",
     "icon": "Symbol",
     "preferences": "Einstellungen",
     "language": "Sprache",
@@ -97,8 +99,13 @@
       "shell": "Shell wird gestartet...",
       "ready": "Bereit",
       "error": "Fehler: {{message}}",
-      "aborted": "Verbindung vom Benutzer abgebrochen"
+      "aborted": "Verbindung durch Benutzer abgebrochen",
+      "security_warning": "Warnung: Der Server erfordert veraltete Sicherheitsprotokolle (z.B. diffie-hellman-group1-sha1, ssh-rsa)."
     },
+    "securityWarningTitle": "Veraltete Protokolle erkannt",
+    "securityWarningDesc": "Dieser Server unterstützt nur veraltete Verschlüsselungsalgorithmen. Das Fortfahren kann die Kommunikation Sicherheitsrisiken aussetzen. Möchten Sie die Verwendung dieser Protokolle autorisieren?",
+    "authorizeAndConnect": "Autorisieren und Verbinden",
+    "rememberSecurityPreference": "Diese Auswahl für diesen Host merken",
     "connectionError": "Verbindungsfehler",
     "rememberPassword": "Passwort im System-Schlüsselbund speichern",
     "profileLabel": "Profilbezeichnung",

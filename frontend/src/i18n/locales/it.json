@@ -21,6 +21,8 @@
     "protocol": "Protocollo",
     "port": "Porta",
     "credentialProfile": "Profilo Credenziali",
+    "allowDeprecated": "Autorizza protocolli di sicurezza deprecati",
+    "allowDeprecatedHelp": "Abilita il supporto per algoritmi SSH obsoleti (es. diffie-hellman-group1-sha1, ssh-rsa).",
     "icon": "Icona",
     "preferences": "Preferenze",
     "language": "Lingua",
@@ -104,8 +106,13 @@
       "shell": "Avvio shell...",
       "ready": "Pronto",
       "error": "Errore: {{message}}",
-      "aborted": "Connessione annullata dall'utente"
+      "aborted": "Connessione annullata dall'utente",
+      "security_warning": "Attenzione: Il server richiede protocolli di sicurezza deprecati (es. diffie-hellman-group1-sha1, ssh-rsa)."
     },
+    "securityWarningTitle": "Protocolli Deprecati Rilevati",
+    "securityWarningDesc": "Questo server supporta solo algoritmi di crittografia obsoleti. Procedere potrebbe esporre la comunicazione a rischi di sicurezza. Vuoi autorizzare l'uso di questi protocolli?",
+    "authorizeAndConnect": "Autorizza e Connetti",
+    "rememberSecurityPreference": "Ricorda questa scelta per questo host",
     "connectionError": "Errore di Connessione",
     "rememberPassword": "Ricorda password nel portachiavi di sistema",
     "profileLabel": "Etichetta Profilo",

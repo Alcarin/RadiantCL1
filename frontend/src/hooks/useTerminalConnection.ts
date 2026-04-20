@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import { ConnectTerminal, AbortConnection } from '../../wailsjs/go/main/App';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +6,7 @@ import { IconName } from '../components/ui/Icon';
 
 export interface ConnectionLogEntry {
   step: string;
-  status: 'pending' | 'success' | 'error' | 'aborted';
+  status: 'pending' | 'success' | 'error' | 'aborted' | 'warning';
   message?: string;
   timestamp: number;
 }
@@ -33,7 +33,31 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     isConnecting: false,
   });
 
-  const connect = useCallback(async (hostId: number, name: string, icon: IconName, address: string = '', port: number = 0, protocolType: string = 'ssh', username: string = '', password: string = '') => {
+  const lastParams = useRef<{
+    hostId: number,
+    name: string,
+    icon: IconName,
+    address: string,
+    port: number,
+    protocolType: string,
+    username: string,
+    password: string
+  } | null>(null);
+
+  const connect = useCallback(async (
+    hostId: number, 
+    name: string, 
+    icon: IconName, 
+    address: string = '', 
+    port: number = 0, 
+    protocolType: string = 'ssh', 
+    username: string = '', 
+    password: string = '',
+    allowDeprecated: boolean = false
+  ) => {
+    // Salviamo i parametri per un eventuale retry
+    lastParams.current = { hostId, name, icon, address, port, protocolType, username, password };
+
     // Generiamo l'ID qui sul frontend per poter ascoltare gli eventi fin dal primo step
     const sessionId = `term-${hostId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -49,7 +73,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     }));
 
     try {
-      await ConnectTerminal(sessionId, hostId, address, port, protocolType, username, password);
+      await ConnectTerminal(sessionId, hostId, address, port, protocolType, username, password, allowDeprecated);
     } catch (err) {
       setState(prev => ({
         ...prev,
@@ -112,6 +136,17 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
             timestamp: Date.now()
           }]
         }));
+      } else if (step === 'security_warning') {
+        setState(prev => ({
+          ...prev,
+          isConnecting: false,
+          entries: [...prev.entries, {
+            step: 'security_warning',
+            status: 'warning',
+            message: message,
+            timestamp: Date.now()
+          }]
+        }));
       } else {
         setState(prev => {
           // If the step is already there, don't duplicate (though backend should only emit once)
@@ -143,9 +178,17 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     return () => EventsOff('terminal:progress');
   }, [state.isOpen, state.sessionId, state.hostName, state.hostId, state.icon, onConnectionSuccess]);
 
+  const retry = useCallback(async (allowDeprecated: boolean = true) => {
+    if (lastParams.current) {
+      const p = lastParams.current;
+      await connect(p.hostId, p.name, p.icon, p.address, p.port, p.protocolType, p.username, p.password, allowDeprecated);
+    }
+  }, [connect]);
+
   return {
     state,
     connect,
+    retry,
     abort,
     close
   };

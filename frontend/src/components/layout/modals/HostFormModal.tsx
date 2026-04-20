@@ -213,6 +213,27 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
             </ModalSelect>
           </div>
 
+          {formData.type === 'ssh' && (
+            <div className="col-span-2">
+              <label className="flex items-start gap-2 cursor-pointer group mt-1">
+                <input 
+                  type="checkbox" 
+                  checked={formData.allowDeprecated || false}
+                  onChange={(e) => setFormData({ ...formData, allowDeprecated: e.target.checked })}
+                  className="mt-1 rounded border-rd-border bg-rd-bg-lighter text-rd-accent focus:ring-rd-accent"
+                />
+                <div className="flex flex-col">
+                  <span className="text-[12px] text-rd-text group-hover:text-rd-accent transition-colors">
+                    {t('common.allowDeprecated')}
+                  </span>
+                  <span className="text-[10px] text-rd-text-dim">
+                    {t('common.allowDeprecatedHelp')}
+                  </span>
+                </div>
+              </label>
+            </div>
+          )}
+
           <div className="col-span-2">
             <ModalLabel>{t('common.icon')}</ModalLabel>
             <div className="flex flex-wrap gap-2 mt-1">

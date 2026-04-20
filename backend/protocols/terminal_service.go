@@ -103,7 +103,7 @@ func (s *TerminalService) logError(format string, args ...interface{}) {
 }
 
 // ConnectSSH avvia una connessione SSH con feedback granulare
-func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string) {
+func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string, allowDeprecated bool) {
 	if address == "" {
 		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("Host address is empty (Received: '%s'). Please verify the host configuration in the database.", address)})
 		return
@@ -148,8 +148,31 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 					return answers, nil
 				}),
 			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         10 * time.Second,
+		}
+		config.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+		config.Timeout = 10 * time.Second
+
+		// Handshake con algoritmi standard inizialmente
+
+		if allowDeprecated {
+			// Abilita algoritmi legacy per apparati datati
+			config.Config.Ciphers = []string{
+				"aes128-ctr", "aes192-ctr", "aes256-ctr",
+				"aes128-gcm@openssh.com", "aes256-gcm@openssh.com",
+				"chacha20-poly1305@openssh.com",
+				"aes128-cbc", "3des-cbc", "aes192-cbc", "aes256-cbc",
+			}
+			config.Config.KeyExchanges = []string{
+				"curve25519-sha256@libssh.org",
+				"ecdh-sha2-nistp256", "ecdh-sha2-nistp384", "ecdh-sha2-nistp521",
+				"diffie-hellman-group14-sha256", "diffie-hellman-group14-sha1",
+				"diffie-hellman-group1-sha1", "diffie-hellman-group-exchange-sha256",
+				"diffie-hellman-group-exchange-sha1",
+			}
+			config.Config.MACs = []string{
+				"hmac-sha2-256-etm@openssh.com", "hmac-sha2-512-etm@openssh.com",
+				"hmac-sha2-256", "hmac-sha2-512", "hmac-sha1", "hmac-sha1-96",
+			}
 		}
 
 		addr := fmt.Sprintf("%s:%d", address, port)
@@ -172,6 +195,13 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "handshake"})
 		sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
 		if err != nil {
+			// Rilevamento errore di algoritmi comuni
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "no common algorithm") || strings.Contains(errMsg, "no supported methods remain") {
+				s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "security_warning", "message": errMsg})
+				s.RemoveSession(id)
+				return
+			}
 			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("SSH Handshake Error: %v", err)})
 			s.RemoveSession(id)
 			return
@@ -453,27 +483,29 @@ func (s *TerminalService) GetSessions() []SessionInfo {
 
 	sessions := make([]SessionInfo, 0, len(s.sessions))
 	for _, ts := range s.sessions {
-		sessions = append(sessions, SessionInfo{
-			ID:     ts.ID,
-			Name:   ts.Name,
-			Host:   ts.Address,
-			Type:   ts.Type,
-			Status: ts.Status,
-			Icon:   ts.Icon,
-		})
+		if ts.Status == "connected" {
+			sessions = append(sessions, SessionInfo{
+				ID:     ts.ID,
+				Name:   ts.Name,
+				Host:   ts.Address,
+				Type:   ts.Type,
+				Status: ts.Status,
+				Icon:   ts.Icon,
+			})
+		}
 	}
 	return sessions
 }
 
 func (s *TerminalService) RemoveSession(id string) {
 	s.mu.Lock()
-	ts, ok := s.sessions[id]
+	_, ok := s.sessions[id]
 	if ok {
 		delete(s.sessions, id)
 	}
 	s.mu.Unlock()
 
-	if ok && ts.Status == "connected" {
+	if ok {
 		s.CloseSession(id)
 	}
 

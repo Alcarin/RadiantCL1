@@ -42,7 +42,7 @@ interface OpenTab {
 
 import { EventsEmit, EventsOn, EventsOff, LogError } from '../wailsjs/runtime/runtime';
 import { useEffect } from 'react';
-import { CloseTerminal, GetHostWithCredentials, AbortConnection } from '../wailsjs/go/main/App';
+import { CloseTerminal, GetHostWithCredentials, AbortConnection, UpdateHostAllowDeprecated } from '../wailsjs/go/main/App';
 import { ProtocolConnectModal, ProtocolRequestData } from './components/layout/modals/ProtocolConnectModal';
 import { ConnectionLogModal } from './components/layout/modals/ConnectionLogModal';
 import { useTerminalConnection } from './hooks/useTerminalConnection';
@@ -110,9 +110,17 @@ function App() {
   const { 
     state: connState, 
     connect: startConnection, 
+    retry: retryConnection,
     abort: abortConnection, 
     close: closeConnModal 
   } = useTerminalConnection((data) => handleOpenTerminal(data));
+
+  const handleRetryConnection = async (savePreference: boolean) => {
+    if (savePreference && connState.hostId > 0) {
+      await UpdateHostAllowDeprecated(connState.hostId, true);
+    }
+    retryConnection(true);
+  };
 
   // Listen for terminal open events
   useEffect(() => {
@@ -448,7 +456,9 @@ function App() {
         isOpen={connState.isOpen}
         onClose={closeConnModal}
         onAbort={abortConnection}
+        onRetry={handleRetryConnection}
         hostName={connState.hostName}
+        hostId={connState.hostId}
         entries={connState.entries}
         isConnecting={connState.isConnecting}
       />

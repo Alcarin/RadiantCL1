@@ -26,6 +26,7 @@ type Host struct {
 	Type         string `json:"type"`
 	Port         int    `json:"port"`
 	SortOrder    int    `json:"sortOrder"`
+	AllowDeprecated bool `json:"allowDeprecated"`
 }
 
 // TreeData is a container for both folders and hosts.
@@ -58,7 +59,7 @@ func (m *Manager) GetTreeData() (TreeData, error) {
 	}
 
 	// Fetch Hosts
-	rowsH, err := m.DB.Query("SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order FROM hosts ORDER BY sort_order ASC")
+	rowsH, err := m.DB.Query("SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order, allow_deprecated FROM hosts ORDER BY sort_order ASC")
 	if err != nil {
 		return data, fmt.Errorf("failed to query hosts: %w", err)
 	}
@@ -66,7 +67,7 @@ func (m *Manager) GetTreeData() (TreeData, error) {
 	for rowsH.Next() {
 		var h Host
 		var fid, cid *int64
-		if err := rowsH.Scan(&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder); err != nil {
+		if err := rowsH.Scan(&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder, &h.AllowDeprecated); err != nil {
 			return data, err
 		}
 		h.FolderID = fid
@@ -95,8 +96,8 @@ func (m *Manager) AddFolder(f Folder) (int64, error) {
 
 // AddHost inserts a new host.
 func (m *Manager) AddHost(h Host) (int64, error) {
-	res, err := m.DB.Exec("INSERT INTO hosts (folder_id, credential_id, label, icon, address, type, port, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		h.FolderID, h.CredentialID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder)
+	res, err := m.DB.Exec("INSERT INTO hosts (folder_id, credential_id, label, icon, address, type, port, sort_order, allow_deprecated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		h.FolderID, h.CredentialID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder, h.AllowDeprecated)
 	if err != nil {
 		return 0, err
 	}
@@ -118,8 +119,14 @@ func (m *Manager) DeleteFolder(id int64) error {
 
 // UpdateHost updates an existing host.
 func (m *Manager) UpdateHost(h Host) error {
-	_, err := m.DB.Exec("UPDATE hosts SET folder_id = ?, credential_id = ?, label = ?, icon = ?, address = ?, type = ?, port = ?, sort_order = ? WHERE id = ?",
-		h.FolderID, h.CredentialID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder, h.ID)
+	_, err := m.DB.Exec("UPDATE hosts SET folder_id = ?, credential_id = ?, label = ?, icon = ?, address = ?, type = ?, port = ?, sort_order = ?, allow_deprecated = ? WHERE id = ?",
+		h.FolderID, h.CredentialID, h.Label, h.Icon, h.Address, h.Type, h.Port, h.SortOrder, h.AllowDeprecated, h.ID)
+	return err
+}
+
+// SetHostAllowDeprecated updates only the allow_deprecated field for a host.
+func (m *Manager) SetHostAllowDeprecated(id int64, allow bool) error {
+	_, err := m.DB.Exec("UPDATE hosts SET allow_deprecated = ? WHERE id = ?", allow, id)
 	return err
 }
 
@@ -253,11 +260,11 @@ func (m *Manager) GetHostByAddress(address string) (*Host, error) {
 	var h Host
 	var fid, cid *int64
 	err := m.DB.QueryRow(`
-		SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order 
+		SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order, allow_deprecated 
 		FROM hosts 
 		WHERE LOWER(address) = LOWER(?) 
 		LIMIT 1`, address).Scan(
-		&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder)
+		&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder, &h.AllowDeprecated)
 	
 	if err == sql.ErrNoRows {
 		return nil, nil // Not found is not an error here

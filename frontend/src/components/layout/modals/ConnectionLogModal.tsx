@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, ModalButton } from '../../ui/Modal';
 import { Icon } from '../../ui/Icon';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,9 @@ interface ConnectionLogModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAbort: () => void;
+  onRetry: (savePreference: boolean) => void;
   hostName: string;
+  hostId: number;
   entries: ConnectionLogEntry[];
   isConnecting: boolean;
 }
@@ -18,12 +20,15 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
   isOpen,
   onClose,
   onAbort,
+  onRetry,
   hostName,
+  hostId,
   entries,
   isConnecting,
 }) => {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [rememberPreference, setRememberPreference] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -32,6 +37,11 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
   }, [entries]);
 
   const hasError = entries.some(e => e.status === 'error' || e.status === 'aborted');
+  const securityWarning = entries.find(e => e.step === 'security_warning');
+
+  const handleRetry = () => {
+    onRetry(rememberPreference);
+  };
 
   return (
     <Modal
@@ -45,6 +55,15 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
             <ModalButton variant="danger" onClick={onAbort}>
               {t('modals.abortConnection')}
             </ModalButton>
+          ) : securityWarning ? (
+            <div className="flex gap-2">
+               <ModalButton variant="secondary" onClick={onClose}>
+                {t('common.cancel')}
+              </ModalButton>
+              <ModalButton variant="primary" onClick={handleRetry}>
+                {t('modals.authorizeAndConnect')}
+              </ModalButton>
+            </div>
           ) : (
             <ModalButton variant="primary" onClick={onClose}>
               {t('common.close')}
@@ -77,6 +96,7 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
             <div key={idx} className={cn(
               "flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300",
               entry.status === 'error' || entry.status === 'aborted' ? "text-red-400" : 
+              entry.status === 'warning' ? "text-orange-400" :
               entry.status === 'success' ? "text-rd-text-dim" : "text-rd-accent"
             )}>
               <span className="shrink-0 mt-0.5">
@@ -84,6 +104,8 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
                   <Icon name="loading" size={14} className="animate-spin" />
                 ) : entry.status === 'success' ? (
                   <Icon name="check" size={14} className="text-green-500" />
+                ) : entry.status === 'warning' ? (
+                  <Icon name="alertTriangle" size={14} className="text-orange-500" />
                 ) : (
                   <Icon name="close" size={14} className="text-red-500" />
                 )}
@@ -92,8 +114,11 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
                 <span className="leading-tight">
                   {t(`modals.connectionSteps.${entry.step}`, { message: entry.message })}
                 </span>
-                {entry.status === 'error' && entry.message && (
-                  <span className="text-[10px] mt-1 p-1.5 bg-red-500/10 border border-red-500/20 rounded">
+                {(entry.status === 'error' || entry.status === 'warning') && entry.message && (
+                  <span className={cn(
+                    "text-[10px] mt-1 p-1.5 border rounded",
+                    entry.status === 'error' ? "bg-red-500/10 border-red-500/20" : "bg-orange-500/10 border-orange-500/20"
+                  )}>
                     {entry.message}
                   </span>
                 )}
@@ -104,7 +129,7 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
             </div>
           ))}
           
-          {!isConnecting && !hasError && entries.length > 0 && (
+          {!isConnecting && !hasError && !securityWarning && entries.length > 0 && (
             <div className="text-green-500 flex items-center gap-2 mt-2 pt-2 border-t border-zinc-800">
               <Icon name="check" size={14} />
               <span>{t('modals.connectionSteps.ready')}</span>
@@ -112,7 +137,31 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
           )}
         </div>
 
-        {hasError && (
+        {securityWarning && (
+          <div className="bg-orange-500/5 border border-orange-500/20 p-3 rounded flex flex-col gap-3">
+             <div className="flex items-center gap-3">
+              <Icon name="alertTriangle" size={20} className="text-orange-500 shrink-0" />
+              <div className="text-[12px] text-rd-text">
+                <p className="font-bold">{t('modals.securityWarningTitle')}</p>
+                <p className="opacity-80">{t('modals.securityWarningDesc')}</p>
+              </div>
+            </div>
+            
+            {hostId > 0 && (
+              <label className="flex items-center gap-2 text-[11px] text-rd-text-dim cursor-pointer hover:text-rd-text transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={rememberPreference}
+                  onChange={(e) => setRememberPreference(e.target.checked)}
+                  className="rounded border-rd-border bg-rd-bg-lighter text-rd-accent focus:ring-rd-accent"
+                />
+                {t('modals.rememberSecurityPreference')}
+              </label>
+            )}
+          </div>
+        )}
+
+        {hasError && !securityWarning && (
           <div className="bg-red-500/5 border border-red-500/10 p-3 rounded flex items-center gap-3">
             <Icon name="close" size={20} className="text-red-500 shrink-0" />
             <div className="text-[12px] text-rd-text">

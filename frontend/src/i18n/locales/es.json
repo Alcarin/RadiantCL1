@@ -21,6 +21,8 @@
     "protocol": "Protocolo",
     "port": "Puerto",
     "credentialProfile": "Perfil de Credenciales",
+    "allowDeprecated": "Autorizar protocolos de seguridad obsoletos",
+    "allowDeprecatedHelp": "Habilitar soporte para algoritmos SSH obsoletos (ej. diffie-hellman-group1-sha1, ssh-rsa).",
     "icon": "Icono",
     "preferences": "Preferencias",
     "language": "Idioma",
@@ -105,8 +107,13 @@
       "shell": "Iniciando shell...",
       "ready": "Listo",
       "error": "Error: {{message}}",
-      "aborted": "Conexión cancelada por el usuario"
+      "aborted": "Conexión abortada por el usuario",
+      "security_warning": "Atención: El servidor requiere protocolos de seguridad obsoletos (ej. diffie-hellman-group1-sha1, ssh-rsa)."
     },
+    "securityWarningTitle": "Protocolos Obsoletos Detectados",
+    "securityWarningDesc": "Este servidor solo admite algoritmos de cifrado obsoletos. Continuar puede exponer la comunicación a riesgos de seguridad. ¿Desea autorizar el uso de estos protocolos?",
+    "authorizeAndConnect": "Autorizar y Conectar",
+    "rememberSecurityPreference": "Recordar esta elección para este host",
     "connectionError": "Error de Conexión",
     "rememberPassword": "Recordar contraseña en el llavero del sistema",
     "profileLabel": "Etiqueta del Perfil",

@@ -283,7 +283,7 @@ func (a *App) MoveItem(itemType string, id int64, targetFolderID int64, sortOrde
 
 // ConnectTerminal avvia una connessione terminale per un host.
 // Se hostID > 0, recupera i dettagli dal database. Altrimenti usa i parametri passati (connessione ad-hoc).
-func (a *App) ConnectTerminal(sessionID string, hostID int64, address string, port int, protocolType string, username string, password string) error {
+func (a *App) ConnectTerminal(sessionID string, hostID int64, address string, port int, protocolType string, username string, password string, allowDeprecated bool) error {
 	if a.dbManager == nil {
 		return fmt.Errorf("database not initialized")
 	}
@@ -291,20 +291,21 @@ func (a *App) ConnectTerminal(sessionID string, hostID int64, address string, po
 	var h db.Host
 	if hostID > 0 {
 		// Recupera dati host persistito
-		err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port, credential_id FROM hosts WHERE id = ?", hostID).Scan(
-			&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.CredentialID)
+		err := a.dbManager.DB.QueryRow("SELECT id, label, icon, address, type, port, credential_id, allow_deprecated FROM hosts WHERE id = ?", hostID).Scan(
+			&h.ID, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.CredentialID, &h.AllowDeprecated)
 		if err != nil {
 			return fmt.Errorf("failed to fetch host: %w", err)
 		}
 	} else {
 		// Connessione temporanea (o hostID non valido)
 		h = db.Host{
-			ID:      0,
-			Label:   address,
-			Icon:    "terminal",
-			Address: address,
-			Type:    protocolType,
-			Port:    port,
+			ID:              0,
+			Label:           address,
+			Icon:            "terminal",
+			Address:         address,
+			Type:            protocolType,
+			Port:            port,
+			AllowDeprecated: allowDeprecated,
 		}
 		if h.Type == "" {
 			h.Type = "ssh" // Default
@@ -316,10 +317,13 @@ func (a *App) ConnectTerminal(sessionID string, hostID int64, address string, po
 				h.Port = 23
 			}
 		}
-		if h.Label == "" {
-			h.Label = h.Address
-		}
 	}
+	if h.Label == "" {
+		h.Label = h.Address
+	}
+
+	// Usa il flag passato esplicitamente (per il retry) o quello salvato nel database
+	finalAllowDeprecated := h.AllowDeprecated || allowDeprecated
 
 	finalUser := username
 	finalPass := password
@@ -333,12 +337,20 @@ func (a *App) ConnectTerminal(sessionID string, hostID int64, address string, po
 	}
 
 	if h.Type == "ssh" {
-		a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, finalUser, finalPass)
+		a.terminalService.ConnectSSH(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port, finalUser, finalPass, finalAllowDeprecated)
 	} else {
 		a.terminalService.ConnectTelnet(sessionID, h.ID, h.Label, h.Icon, h.Address, h.Port)
 	}
 
 	return nil
+}
+
+// UpdateHostAllowDeprecated aggiorna la preferenza per i protocolli deprecati
+func (a *App) UpdateHostAllowDeprecated(hostID int64, allow bool) error {
+	if a.dbManager == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.SetHostAllowDeprecated(hostID, allow)
 }
 
 // AbortConnection interrompe una connessione in corso o una sessione attiva
