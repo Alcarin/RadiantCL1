@@ -335,6 +335,7 @@ function App() {
           setSideBarVisible(true);
         }
       }}
+      onSettingsClick={() => EventsEmit('app:open-preferences')}
       items={[
         { id: 'connections', icon: 'network', label: t('common.connections') },
         { id: 'explorer', icon: 'file', label: t('common.explorer') },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon, IconName } from '../ui/Icon';
-import { WindowMinimise, WindowToggleMaximise, Quit, Environment, EventsEmit } from '../../../wailsjs/runtime/runtime';
+import { WindowMinimise, WindowToggleMaximise, Quit, Environment, EventsEmit, EventsOn } from '../../../wailsjs/runtime/runtime';
 import { HostsService } from '../../lib/hosts_service';
 import { TreeNode } from '../ui/TreeView';
 import { CreditsModal } from './modals/CreditsModal';
@@ -41,7 +41,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       }
     };
     window.addEventListener('mousedown', handleClickOutside);
-    return () => window.removeEventListener('mousedown', handleClickOutside);
+
+    const offPref = EventsOn('app:open-preferences', () => {
+      setIsPreferencesOpen(true);
+    });
+
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside);
+      offPref();
+    };
   }, []);
 
   const handleMinimise = () => WindowMinimise();

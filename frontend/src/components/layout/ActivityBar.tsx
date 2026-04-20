@@ -12,10 +12,11 @@ interface ActivityBarItem {
 interface ActivityBarProps {
   activeId: string;
   onSelect: (id: string) => void;
+  onSettingsClick?: () => void;
   items: ActivityBarItem[];
 }
 
-export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, items }) => {
+export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, onSettingsClick, items }) => {
   const { t } = useTranslation();
   
   return (
@@ -49,15 +50,10 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ activeId, onSelect, it
         })}
       </div>
 
-      {/* Bottom icons — account & settings */}
+      {/* Bottom icons — settings */}
       <div className="mt-auto flex flex-col items-center w-full pb-1">
         <button
-          className="flex items-center justify-center w-full py-[10px] text-rd-text-dim hover:text-rd-text-active transition-colors focus:outline-none"
-          title={t('common.account')}
-        >
-          <Icon name="activity" size={20} />
-        </button>
-        <button
+          onClick={onSettingsClick}
           className="flex items-center justify-center w-full py-[10px] text-rd-text-dim hover:text-rd-text-active transition-colors focus:outline-none"
           title={t('common.preferences')}
         >

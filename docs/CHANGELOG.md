@@ -65,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Connection Workflow**: Terminal connections now automatically resolve credentials from the vault, skipping manual login for predefined profiles.
 - **Date/Time Consistency**: All date/time values across the application (log player tab labels, info bar, glyph tooltips, history tree nodes) use the operating system locale (`undefined`) with explicit 24-hour format, ensuring consistent display regardless of the application language setting.
 - **Log Filename Timestamp Parsing**: `GetSessionLogs` now calls `time.ParseInLocation(..., time.Local)` so session timestamps derived from filenames reflect the machine's local timezone instead of UTC.
+- **Integrated Settings Access**: Connected the sidebar gear icon to the Preferences modal, enabling direct access to application settings via a new event-driven communication (app:open-preferences).
+
+### Removed
+
+- **Activity Bar Account Icon**: Removed the redundant account icon from the bottom left sidebar to streamline the primary navigation interface.
 
 ### Fixed
 
