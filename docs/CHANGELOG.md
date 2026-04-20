@@ -36,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OS Keychain Integration**: Secure storage for host passwords using system-level services (Windows Credential Manager, macOS Keychain) via `go-keyring`.
 - **Database Schema Expansion**: Added `credentials` table and linked it to existing host infrastructure.
 - **Connections Management**: Implemented "Saved Hosts" sidebar with SQLite backend and folder organization.
+- **Session Log History Viewer**: New sidebar panel (`History`) listing all session log files grouped by host and date, with a tree-view navigator.
+- **Session Log Replay Engine**: Step-by-step replay of recorded sessions via `LogViewerContent`, using a client-side singleton store (`playbackStore`) polled at 60 fps via `requestAnimationFrame` for a flicker-free, zero-latency playback loop decoupled from the Go backend.
+- **Jujutsu (jj) Integration**: Embedded `jj` binary for cross-platform versioned session logging; each idle-timeout period produces an automatic commit containing the session direction and timestamp in the message.
+- **Timeline Slider with Commit Markers**: Visual tick marks on the timeline at each commit boundary; continuous scrubbing reveals log content in real time while dragging, with a final confirmatory seek on mouse-up.
+- **Playback Controls**: Play/Pause, Stop, Previous Frame, Next Frame and variable speed selector (0.5×, 1×, 2×, 5×, 10×).
+- **Monaco Commit Decorations**: Glyph-margin gold dot, overview ruler tick and subtle line highlight at each commit boundary, with a Markdown hover tooltip showing the local timestamp and session direction.
+- **Commit Info Bar**: Row below the timeline showing the current commit timestamp (system locale, 24 h, gold) and session direction (e.g. `Server Debian → RadiantCL1`), with a full tooltip when truncated.
+- **Log Viewer Tab Labels**: Tabs display `host  date time` (system locale, 24 h) instead of raw filenames, with a native `title` tooltip exposing the full label on hover.
 
 ### Changed
 
@@ -50,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Indicators**: "Disconnected" state now uses a **Red X icon** instead of a simple dot to improve accessibility and clear distinction for color-blind users.
 - **Host Configuration**: Updated host form to support credential profile selection.
 - **Connection Workflow**: Terminal connections now automatically resolve credentials from the vault, skipping manual login for predefined profiles.
+- **Date/Time Consistency**: All date/time values across the application (log player tab labels, info bar, glyph tooltips, history tree nodes) use the operating system locale (`undefined`) with explicit 24-hour format, ensuring consistent display regardless of the application language setting.
+- **Log Filename Timestamp Parsing**: `GetSessionLogs` now calls `time.ParseInLocation(..., time.Local)` so session timestamps derived from filenames reflect the machine's local timezone instead of UTC.
 
 ### Fixed
 

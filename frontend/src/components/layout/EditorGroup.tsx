@@ -2,16 +2,22 @@ import React from 'react';
 import Editor from '@monaco-editor/react';
 import { Icon } from '../ui/Icon';
 import { Terminal } from '../ui/Terminal';
+import { LogViewerContent } from './LogViewerContent';
 import { cn } from '../../lib/utils';
+
 
 interface Tab {
   id: string;
   name: string;
-  type?: 'editor' | 'terminal';
+  type?: 'editor' | 'terminal' | 'log-viewer';
   sessionId?: string;
   isModified?: boolean;
   icon?: any; // IconName from TreeView/Icon
+  logHost?: string;
+  logFilename?: string;
 }
+
+
 
 interface EditorGroupProps {
   tabs: Tab[];
@@ -44,6 +50,7 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
             <div
               key={tab.id}
               onClick={() => onTabSelect(tab.id)}
+              title={tab.name}
               className={cn(
                 'group relative flex items-center gap-2 px-3 h-full cursor-pointer transition-colors min-w-[120px] max-w-[200px] border-r border-rd-border',
                 isActive
@@ -58,13 +65,14 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
 
               {/* File/Terminal icon */}
               <Icon
-                name={tab.icon || (tab.type === 'terminal' ? 'terminal' : 'file')}
+                name={tab.icon || (tab.type === 'terminal' ? 'terminal' : tab.type === 'log-viewer' ? 'clock' : 'file')}
                 size={14}
                 className={cn(
                   isActive ? 'text-rd-text-active' : 'text-rd-text-dim',
-                  tab.type === 'terminal' && 'text-rd-accent'
+                  (tab.type === 'terminal' || tab.type === 'log-viewer') && 'text-rd-accent'
                 )}
               />
+
 
               {/* File name */}
               <span className="truncate text-[13px] flex-1">{tab.name}</span>
@@ -108,8 +116,8 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
           </div>
         ))}
 
-        {/* Render editor only if active tab is NOT a terminal */}
-        {tabs.find(t => t.id === activeTabId)?.type !== 'terminal' && (
+        {/* Render editor or log viewer if active tab is NOT a terminal */}
+        {tabs.find(t => t.id === activeTabId)?.type === 'editor' && (
           <Editor
             height="100%"
             language={language}
@@ -132,6 +140,22 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
             }}
           />
         )}
+
+        {tabs.find(t => t.id === activeTabId)?.type === 'log-viewer' && (() => {
+          const t = tabs.find(tab => tab.id === activeTabId);
+          return (
+            <LogViewerContent 
+              key={t?.id}
+              content={content} 
+              tabId={t?.id || ''} 
+              host={t?.logHost || ''} 
+              filename={t?.logFilename || ''}
+            />
+
+          );
+        })()}
+
+
       </div>
     </div>
   );

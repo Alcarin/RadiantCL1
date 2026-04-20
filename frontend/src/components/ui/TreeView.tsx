@@ -227,10 +227,29 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   onNodeContextMenu,
 }, ref) => {
   const treeRef = useRef<TreeApi<TreeNode>>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
 
   useImperativeHandle(ref, () => ({
     tree: treeRef.current
   }));
+
+  // Measure container dimensions
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setDimensions({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const handleSelect = (nodes: any[]) => {
     if (nodes.length > 0 && onSelect) {
@@ -241,20 +260,19 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   const handleToggle = (id: string) => {
     const node = treeRef.current?.get(id);
     if (node) {
-      // Arborist calls onToggle AFTER it changed internal state if managed
       onToggleExpand?.(id, node.isOpen);
     }
   };
 
   return (
-    <div className={cn("flex flex-col w-full", className)}>
+    <div ref={containerRef} className={cn("flex flex-col w-full flex-1 min-h-0", className)}>
       <Tree
         ref={treeRef}
         data={nodes}
         initialOpenState={initialOpenState}
         openByDefault={false}
-        width="100%"
-        height={nodes.length * 22 + (disableDropInto ? 0 : 100)} // Allow some scroll space if needed
+        width={dimensions.width || "100%"}
+        height={dimensions.height || 400} // Default if not measured yet
         rowHeight={22}
         indent={12}
         padding={0}
@@ -281,3 +299,4 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
 });
 
 TreeView.displayName = 'TreeView';
+

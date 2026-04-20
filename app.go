@@ -25,12 +25,26 @@ type ASTNode struct {
 	Children []*ASTNode `json:"children,omitempty"`
 }
 
+type SessionLog struct {
+	Filename  string    `json:"filename"`
+	Timestamp time.Time `json:"timestamp"`
+	Size      int64     `json:"size"`
+}
+
+type HostLogs struct {
+	HostName string       `json:"hostName"`
+	Sessions []SessionLog `json:"sessions"`
+}
+
+
 type App struct {
 	ctx             context.Context
 	dbManager       *db.Manager
 	terminalService *protocols.TerminalService
 	vaultService    *vault.VaultService
+	jj              *protocols.JJService
 }
+
 
 func NewApp() *App {
 	return &App{}
@@ -53,6 +67,11 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize vault service
 	a.vaultService = vault.NewVaultService()
+
+	// Initialize JJ service
+	a.jj = protocols.NewJJService()
+	a.jj.SetContext(ctx)
+
 
 	// Check if started with a URL
 	if len(os.Args) > 1 {
@@ -487,4 +506,122 @@ func (a *App) HandleURL(rawURL string) error {
 		"password": parts.Password,
 	})
 	return nil
+}
+
+// GetSessionLogs recupera l'elenco di tutti i log raggruppati per host
+func (a *App) GetSessionLogs() ([]HostLogs, error) {
+	configDir, err := db.GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	hostsDir := filepath.Join(configDir, "hosts")
+	if _, err := os.Stat(hostsDir); os.IsNotExist(err) {
+		return []HostLogs{}, nil
+	}
+
+	entries, err := os.ReadDir(hostsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []HostLogs
+	for _, entry := range entries {
+		// Ignoriamo la cartella .jj e la cartella bin
+		if !entry.IsDir() || entry.Name() == "bin" || entry.Name() == ".jj" {
+			continue
+		}
+
+		hostName := entry.Name()
+		logDir := filepath.Join(hostsDir, hostName, "log")
+		
+		if _, err := os.Stat(logDir); os.IsNotExist(err) {
+			continue
+		}
+
+		logEntries, err := os.ReadDir(logDir)
+		if err != nil {
+			continue
+		}
+
+		var sessions []SessionLog
+		for _, logEntry := range logEntries {
+			if logEntry.IsDir() || !strings.HasSuffix(logEntry.Name(), ".log") {
+				continue
+			}
+
+			info, err := logEntry.Info()
+			if err != nil {
+				continue
+			}
+
+			// Il formato è session_20060102_150405.log
+			name := logEntry.Name()
+			ts := info.ModTime() // Default to file mod time
+			
+			// Prova a parsare il timestamp dal nome del file per maggiore precisione
+			if strings.HasPrefix(name, "session_") {
+				parts := strings.Split(strings.TrimSuffix(name, ".log"), "_")
+				if len(parts) >= 3 {
+					// parts[1] = 20060102, parts[2] = 150405
+					// ParseInLocation usa la timezone locale della macchina (non UTC)
+					parsedTs, err := time.ParseInLocation("20060102_150405", parts[1]+"_"+parts[2], time.Local)
+					if err == nil {
+						ts = parsedTs
+					}
+				}
+			}
+
+			sessions = append(sessions, SessionLog{
+				Filename:  name,
+				Timestamp: ts,
+				Size:      info.Size(),
+			})
+		}
+
+		if len(sessions) > 0 {
+			result = append(result, HostLogs{
+				HostName: hostName,
+				Sessions: sessions,
+			})
+		}
+	}
+
+	return result, nil
+}
+
+// GetLogContent restituisce il contenuto di un file di log specifico
+func (a *App) GetLogContent(hostName, filename string) (string, error) {
+	configDir, err := db.GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	// Validazione minima per sicurezza
+	if strings.Contains(hostName, "..") || strings.Contains(filename, "..") {
+		return "", fmt.Errorf("invalid path")
+	}
+
+	logPath := filepath.Join(configDir, "hosts", hostName, "log", filename)
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
+}
+
+// GetLogRevisions recupera l'elenco dei commit che hanno modificato un file di log
+func (a *App) GetLogRevisions(hostName, filename string) ([]protocols.LogRevision, error) {
+	return a.jj.ListRevisions(hostName, filename)
+}
+
+// GetLogContentAtRevision recupera il contenuto del log a una specifica revisione
+func (a *App) GetLogContentAtRevision(revision, hostName, filename string) (string, error) {
+	return a.jj.GetRevisionContent(revision, hostName, filename)
+}
+
+// PreloadLogFrames scarica il file e lo divide in delta cronologici
+func (a *App) PreloadLogFrames(hostName, filename string) ([]protocols.LogFrame, error) {
+	return a.jj.PreloadLogFrames(hostName, filename)
 }

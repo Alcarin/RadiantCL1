@@ -16,7 +16,9 @@ import { Icon, IconName } from './components/ui/Icon';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MosaicNode } from 'react-mosaic-component';
 import { ConnectionsView } from './components/layout/ConnectionsView';
+import { HistoryView } from './components/layout/HistoryView';
 import { SideBarSection } from './components/layout/SideBarSection';
+
 import { getDndManager } from './lib/dnd';
 import { MultiBackend } from 'react-dnd-multi-backend';
 import { HTML5toTouch } from 'rdndmb-html5-to-touch';
@@ -27,15 +29,18 @@ import { SettingsService } from './lib/settings_service';
 interface OpenTab {
   id: string;
   name: string;
-  type: 'editor' | 'terminal';
-  content?: string; // For editor
+  type: 'editor' | 'terminal' | 'log-viewer';
+  content?: string; // For editor or log viewer
   sessionId?: string; // For terminal
   hostId?: number; // Optional reference
   icon?: IconName; // Host specific icon
   ast?: any; // For cisco config AST
+  logHost?: string; // For log-viewer
+  logFilename?: string; // For log-viewer
 }
 
-import { EventsOn, EventsOff, LogError } from '../wailsjs/runtime/runtime';
+
+import { EventsEmit, EventsOn, EventsOff, LogError } from '../wailsjs/runtime/runtime';
 import { useEffect } from 'react';
 import { CloseTerminal, GetHostWithCredentials, AbortConnection } from '../wailsjs/go/main/App';
 import { ProtocolConnectModal, ProtocolRequestData } from './components/layout/modals/ProtocolConnectModal';
@@ -45,7 +50,8 @@ import { useTerminalConnection } from './hooks/useTerminalConnection';
 function App() {
   // State
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
-  const [activeSideBar, setActiveSideBar] = useLocalStorage<'connections' | 'explorer' | 'ast' | 'search'>('activeSideBar', 'connections');
+  const [activeSideBar, setActiveSideBar] = useLocalStorage<'connections' | 'explorer' | 'ast' | 'history'>('activeSideBar', 'connections');
+
   const [mosaicLayout, setMosaicLayout] = useLocalStorage<MosaicNode<MosaicId> | null>('mosaicLayout', 'main-group');
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
   const [sideBarVisible, setSideBarVisible] = useState(true);
@@ -180,9 +186,42 @@ function App() {
       }
     };
 
+    const handleOpenLog = (data: { host: string, filename: string, content: string, timestamp: string }) => {
+      const tabId = `log-${data.host}-${data.filename}`;
+      // Locale sistema (undefined), formato data + ora completa, 24h
+      const dateLabel = data.timestamp
+        ? new Date(data.timestamp).toLocaleString(undefined, {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+          })
+        : data.filename;
+      const name = `${data.host} ${dateLabel}`;
+      
+      setOpenTabs(prev => {
+        const alreadyOpen = prev.find(t => t.id === tabId);
+        if (alreadyOpen) {
+          setActiveTabPerGroup(pg => ({ ...pg, 'main-group': tabId }));
+          return prev;
+        }
+
+        const newTab: OpenTab = {
+          id: tabId,
+          name: name,
+          type: 'log-viewer',
+          content: data.content,
+          logHost: data.host,
+          logFilename: data.filename,
+          icon: 'clock'
+        };
+        return [...prev, newTab];
+      });
+      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
+    };
+
     EventsOn('app:open-terminal', handleOpenTerminal);
     EventsOn('app:host-updated', handleHostUpdated);
     EventsOn('app:protocol-request', handleProtocolRequest);
+    EventsOn('app:open-log', handleOpenLog);
 
     // Global listener for connection requests from other components
     const offConnect = EventsOn('app:connect', (data: { 
@@ -211,9 +250,21 @@ function App() {
       EventsOff('app:open-terminal');
       EventsOff('app:host-updated');
       EventsOff('app:protocol-request');
+      EventsOff('app:open-log');
       offConnect();
     };
+
   }, []);
+
+  // Monitor active tab changes to notify sidebar
+  useEffect(() => {
+    const activeId = activeTabPerGroup['main-group'];
+    const activeTab = openTabs.find(t => t.id === activeId);
+    if (activeId) {
+      EventsEmit('app:tab-changed', activeTab);
+    }
+  }, [activeTabPerGroup, openTabs]);
+
 
   // Handlers
   const handleOpenConfig = async () => {
@@ -279,9 +330,10 @@ function App() {
       items={[
         { id: 'connections', icon: 'network', label: t('common.connections') },
         { id: 'explorer', icon: 'file', label: t('common.explorer') },
-        { id: 'search', icon: 'search', label: t('common.search') },
+        { id: 'history', icon: 'clock', label: t('common.history') },
         { id: 'ast', icon: 'layout', label: t('common.astViewer') },
       ]}
+
     />
   );
 
@@ -290,13 +342,16 @@ function App() {
       title={
         activeSideBar === 'connections' ? t('common.connections') : 
         activeSideBar === 'explorer' ? t('common.explorer') : 
-        activeSideBar === 'search' ? t('common.search') :
+        activeSideBar === 'history' ? t('common.history') :
         activeSideBar === 'ast' ? t('common.astViewer') : 
         activeSideBar
+
       } 
     >
       {activeSideBar === 'connections' && <ConnectionsView />}
+      {activeSideBar === 'history' && <HistoryView />}
       {activeSideBar === 'explorer' && (
+
         <SideBarSection 
           title={t('common.openEditors')}
           actions={
@@ -337,7 +392,9 @@ function App() {
               name: t.name, 
               type: t.type, 
               sessionId: t.sessionId,
-              icon: t.icon
+              icon: t.icon,
+              logHost: t.logHost,
+              logFilename: t.logFilename
             }))}
             activeTabId={activeTabPerGroup[groupId] || ''}
             onTabSelect={(id) => setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }))}

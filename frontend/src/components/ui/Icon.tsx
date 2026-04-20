@@ -75,7 +75,12 @@ import {
   ShieldOff,
   ShieldCheck,
   Check,
+  Pause,
+  Square,
+  SkipBack,
+  SkipForward,
 } from 'lucide-react';
+
 
 export type IconName =
   | 'file'
@@ -155,7 +160,13 @@ export type IconName =
   | 'shieldCheck'
   | 'refreshCw'
   | 'check'
-  | 'loading';
+  | 'loading'
+  | 'play'
+  | 'pause'
+  | 'stop'
+  | 'skipBack'
+  | 'skipForward';
+
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
@@ -236,7 +247,13 @@ const icons: Record<IconName, React.ElementType> = {
   refreshCw: RefreshCw,
   check: Check,
   loading: RefreshCw,
+  play: Play,
+  pause: Pause,
+  stop: Square,
+  skipBack: SkipBack,
+  skipForward: SkipForward,
 };
+
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;

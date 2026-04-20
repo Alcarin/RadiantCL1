@@ -251,4 +251,17 @@
   .wails-drag:hover .mac-control svg {
     opacity: 1;
   }
+
+  /* ── Monaco Editor: Commit Markers nel Gutter ── */
+
+  /* Punto gold nel glyph margin (a sinistra dei numeri di riga) */
+  .rd-commit-glyph {
+    background: radial-gradient(circle at 50% 50%, #fde047 38%, transparent 38%);
+  }
+
+  /* Sottile evidenziazione della riga di commit */
+  .rd-commit-line {
+    background: rgba(253, 224, 71, 0.04) !important;
+    border-top: 1px solid rgba(253, 224, 71, 0.15) !important;
+  }
 }

@@ -7,6 +7,7 @@ interface SideBarSectionProps {
   children: React.ReactNode;
   defaultExpanded?: boolean;
   actions?: React.ReactNode;
+  className?: string;
 }
 
 export const SideBarSection: React.FC<SideBarSectionProps> = ({
@@ -14,11 +15,13 @@ export const SideBarSection: React.FC<SideBarSectionProps> = ({
   children,
   defaultExpanded = true,
   actions,
+  className,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="flex flex-col group">
+    <div className={cn("flex flex-col group", className)}>
+
       {/* Section Header */}
       <div 
         className="flex items-center h-[22px] px-1 hover:bg-rd-list-hover cursor-pointer text-rd-text-dim group-hover:text-rd-text transition-colors mt-0.5"
@@ -43,10 +46,14 @@ export const SideBarSection: React.FC<SideBarSectionProps> = ({
 
       {/* Section Content */}
       {expanded && (
-        <div className="flex flex-col overflow-hidden">
+        <div className={cn(
+          "flex flex-col overflow-hidden",
+          className?.includes('flex-1') && "flex-1"
+        )}>
           {children}
         </div>
       )}
+
     </div>
   );
 };
