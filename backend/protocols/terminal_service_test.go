@@ -24,6 +24,7 @@ func TestTerminalService_GetSessions(t *testing.T) {
 		Name:    "Test Host",
 		Address: "1.2.3.4",
 		Type:    "ssh",
+		Status:  "connected",
 	}
 	ts.mu.Unlock()
 
@@ -81,6 +82,7 @@ func TestTerminalService_RemoveSession(t *testing.T) {
 		ID:     sessionID,
 		Ctx:    ctx,
 		Cancel: cancel,
+		Status: "connected",
 	}
 	ts.mu.Unlock()
 

@@ -73,6 +73,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Telnet Protocol Reliability**: Fixed an issue where no input or output was visible after establishing a Telnet connection.
+- **Robust Telnet Negotiation**: Implemented support for `ECHO` and `SGA` (Suppress Go Ahead) options (RFC 854/855), enabling remote echo for network devices.
+- **Transparent TCP Support**: Improved handling of raw data streams, allowing the terminal to be used for manual SMTP/HTTP protocol simulation.
+- **IAC Sequence Handling**: Corrected management of `IAC IAC` (escaped 255) and subnegotiation (SB) sequences to prevent data corruption.
 - **Resource Leak Prevention**: Ensured all TCP sockets and SSH clients are explicitly closed in `RemoveSession`, even for connection attempts that failed during the initial handshake stage.
 - **Icon Type Safety**: Resolved TypeScript compiler errors caused by missing icon mappings and naming inconsistencies in `Icon.tsx` and `PreferencesModal.tsx`.
 - **Type Compatibility**: Resolved critical compiler errors between `i18next` and legacy TypeScript by upgrading the project to TypeScript 5.

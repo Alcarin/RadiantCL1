@@ -378,6 +378,11 @@ const (
 	telnetDO   = 253
 	telnetWONT = 252
 	telnetWILL = 251
+	telnetSB   = 250
+	telnetSE   = 240
+
+	telnetOptEcho = 1
+	telnetOptSGA  = 3
 )
 
 func (s *TerminalService) telnetReadLoop(ts *TerminalSession) {
@@ -391,34 +396,76 @@ func (s *TerminalService) telnetReadLoop(ts *TerminalSession) {
 
 		if b == telnetIAC {
 			// Negoziazione Telnet
-			cmd, _ := reader.ReadByte()
-			opt, _ := reader.ReadByte()
+			cmd, err := reader.ReadByte()
+			if err != nil {
+				return
+			}
 
-			// Rispondi in modo conservativo (WONT/DONT)
-			var response []byte
-			switch cmd {
-			case telnetDO:
-				response = []byte{telnetIAC, telnetWONT, opt}
-			case telnetWILL:
-				response = []byte{telnetIAC, telnetDONT, opt}
+			if cmd == telnetIAC {
+				// IAC IAC -> interpretato come dato letterale 255
+				s.emitData(ts, []byte{telnetIAC})
+				continue
 			}
-			if response != nil {
-				ts.Conn.Write(response)
+
+			if cmd == telnetSB {
+				// Inizio Subnegotiation: salta fino a SE
+				for {
+					sbByte, err := reader.ReadByte()
+					if err != nil {
+						return
+					}
+					if sbByte == telnetIAC {
+						next, _ := reader.ReadByte()
+						if next == telnetSE {
+							break
+						}
+					}
+				}
+				continue
 			}
+
+			// Comandi a 3 byte (DO/DONT/WILL/WONT)
+			if cmd >= telnetWILL && cmd <= telnetDONT {
+				opt, err := reader.ReadByte()
+				if err != nil {
+					return
+				}
+
+				var response []byte
+				switch cmd {
+				case telnetDO:
+					// Il server mi chiede di fare qualcosa. Dico sempre di no (WONT).
+					response = []byte{telnetIAC, telnetWONT, opt}
+				case telnetDONT:
+					// Il server mi chiede di smettere di fare qualcosa. Dico OK (WONT).
+					response = []byte{telnetIAC, telnetWONT, opt}
+				case telnetWILL:
+					// Il server vuole fare qualcosa.
+					if opt == telnetOptEcho || opt == telnetOptSGA {
+						// Accettiamo Echo e Suppress Go Ahead dal server
+						response = []byte{telnetIAC, telnetDO, opt}
+					} else {
+						// Rifiutiamo il resto
+						response = []byte{telnetIAC, telnetDONT, opt}
+					}
+				case telnetWONT:
+					// Il server non vuole fare qualcosa. Dico OK (DONT).
+					response = []byte{telnetIAC, telnetDONT, opt}
+				}
+
+				if response != nil {
+					ts.Conn.Write(response)
+				}
+				continue
+			}
+			
+			// Altri comandi a 2 byte (es. NOP, BRK) vengono ignorati
 			continue
 		}
 
 		// Dato normale
-		s.logData(ts, ts.Name+" -> RadiantCL1", []byte{b})
-		ts.mu.Lock()
-		if ts.isReady {
-			ts.mu.Unlock()
-			s.emit("terminal:data:"+ts.ID, string([]byte{b}))
-		} else {
-			ts.buffer = append(ts.buffer, b)
-			ts.mu.Unlock()
-		}
-		
+		s.emitData(ts, []byte{b})
+
 		// Leggi il resto se disponibile per ottimizzare gli eventi
 		if reader.Buffered() > 0 {
 			peeked, _ := reader.Peek(reader.Buffered())
@@ -433,17 +480,22 @@ func (s *TerminalService) telnetReadLoop(ts *TerminalSession) {
 			if count > 0 {
 				actual := make([]byte, count)
 				reader.Read(actual)
-				s.logData(ts, ts.Name+" -> RadiantCL1", actual)
-				ts.mu.Lock()
-				if ts.isReady {
-					ts.mu.Unlock()
-					s.emit("terminal:data:"+ts.ID, string(actual))
-				} else {
-					ts.buffer = append(ts.buffer, actual...)
-					ts.mu.Unlock()
-				}
+				s.emitData(ts, actual)
 			}
 		}
+	}
+}
+
+// emitData è una helper interna per gestire il buffering e l'emissione dei dati
+func (s *TerminalService) emitData(ts *TerminalSession, data []byte) {
+	s.logData(ts, ts.Name+" -> RadiantCL1", data)
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	if ts.isReady {
+		s.emit("terminal:data:"+ts.ID, string(data))
+	} else {
+		ts.buffer = append(ts.buffer, data...)
 	}
 }
 
