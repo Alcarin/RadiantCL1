@@ -98,10 +98,10 @@
       "ready": "Prêt",
       "error": "Erreur: {{message}}",
       "aborted": "Connexion interrompue par l'utilisateur",
-      "security_warning": "Attention: Le serveur requiert des protocoles de sécurité obsolètes (ex. diffie-hellman-group1-sha1, ssh-rsa)."
+      "security_warning": "{{message}}"
     },
-    "securityWarningTitle": "Protocoles Obsolètes Détectés",
-    "securityWarningDesc": "Ce serveur ne supporte que des algorithmes de chiffrement obsolètes. Continuer peut exposer la communication à des risques de sécurité. Voulez-vous autoriser l'utilisation de ces protocoles?",
+    "securityWarningTitle": "Protocoles obsolètes détectés",
+    "securityWarningDesc": "{{message}}",
     "authorizeAndConnect": "Autoriser et Connecter",
     "rememberSecurityPreference": "Se souvenir de ce choix pour cet hôte",
     "connectionError": "Erreur de Connexion",

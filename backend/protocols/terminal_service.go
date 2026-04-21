@@ -102,6 +102,40 @@ func (s *TerminalService) logError(format string, args ...interface{}) {
 	}
 }
 
+// Analisi degli algoritmi SSH per capire se sono risolvibili con allowDeprecated
+func (s *TerminalService) analyzeSSHError(errMsg string) (serverAlgs []string, isFixable bool) {
+	// Pattern tipico: "ssh: handshake failed: ssh: no common algorithm. client offered: [...], server offered: [xxx]"
+	re := regexp.MustCompile(`server offered: \[([^\]]+)\]`)
+	match := re.FindStringSubmatch(errMsg)
+	if len(match) < 2 {
+		return nil, false
+	}
+
+	algs := strings.Split(match[1], ", ")
+	
+	// Liste per il confronto
+	legacyKex := []string{"diffie-hellman-group14-sha1", "diffie-hellman-group1-sha1", "diffie-hellman-group-exchange-sha1", "diffie-hellman-group-exchange-sha256"}
+	legacyCiphers := []string{"aes128-cbc", "3des-cbc", "aes192-cbc", "aes256-cbc", "arcfour", "arcfour128", "arcfour256", "blowfish-cbc", "cast128-cbc"}
+	legacyMACs := []string{"hmac-sha1", "hmac-sha1-96", "hmac-md5", "hmac-md5-96"}
+	legacyHostKeys := []string{"ssh-rsa", "ssh-dss"}
+
+	allLegacy := append(legacyKex, legacyCiphers...)
+	allLegacy = append(allLegacy, legacyMACs...)
+	allLegacy = append(allLegacy, legacyHostKeys...)
+
+	fixableAlgs := []string{}
+	for _, a := range algs {
+		for _, l := range allLegacy {
+			if a == l {
+				fixableAlgs = append(fixableAlgs, a)
+				isFixable = true
+			}
+		}
+	}
+
+	return algs, isFixable
+}
+
 // ConnectSSH avvia una connessione SSH con feedback granulare
 func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon string, address string, port int, user string, password string, allowDeprecated bool) {
 	if address == "" {
@@ -161,6 +195,7 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 				"aes128-gcm@openssh.com", "aes256-gcm@openssh.com",
 				"chacha20-poly1305@openssh.com",
 				"aes128-cbc", "3des-cbc", "aes192-cbc", "aes256-cbc",
+				"arcfour", "arcfour128", "arcfour256", "blowfish-cbc", "cast128-cbc",
 			}
 			config.Config.KeyExchanges = []string{
 				"curve25519-sha256@libssh.org",
@@ -172,6 +207,11 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 			config.Config.MACs = []string{
 				"hmac-sha2-256-etm@openssh.com", "hmac-sha2-512-etm@openssh.com",
 				"hmac-sha2-256", "hmac-sha2-512", "hmac-sha1", "hmac-sha1-96",
+				"hmac-md5", "hmac-md5-96",
+			}
+			config.HostKeyAlgorithms = []string{
+				"ssh-ed25519", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+				"rsa-sha2-256", "rsa-sha2-512", "ssh-rsa", "ssh-dss",
 			}
 		}
 
@@ -195,14 +235,31 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "handshake"})
 		sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
 		if err != nil {
-			// Rilevamento errore di algoritmi comuni
 			errMsg := err.Error()
-			if strings.Contains(errMsg, "no common algorithm") || strings.Contains(errMsg, "no supported methods remain") {
-				s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "security_warning", "message": errMsg})
-				s.RemoveSession(id)
-				return
+			if strings.Contains(errMsg, "no common algorithm") || strings.Contains(errMsg, "key exchange failed") {
+				serverAlgs, isFixable := s.analyzeSSHError(errMsg)
+				
+				if isFixable && !allowDeprecated {
+					// È risolvibile ma non abbiamo ancora l'autorizzazione
+					s.emit("terminal:progress", map[string]interface{}{
+						"id": id, 
+						"step": "security_warning", 
+						"message": fmt.Sprintf("L'apparato richiede algoritmi datati: %v. Vuoi autorizzarli per questa connessione?", serverAlgs),
+					})
+					s.RemoveSession(id)
+					return
+				} else if !isFixable {
+					// Non è supportato nemmeno in modalità legacy
+					s.emit("terminal:progress", map[string]interface{}{
+						"id": id, 
+						"step": "error", 
+						"message": fmt.Sprintf("L'apparato richiede algoritmi (%v) che non sono disponibili perché troppo insicuri.", serverAlgs),
+					})
+					s.RemoveSession(id)
+					return
+				}
 			}
-			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("SSH Handshake Error: %v", err)})
+			s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "error", "message": fmt.Sprintf("SSH Handshake Error: %v", errMsg)})
 			s.RemoveSession(id)
 			return
 		}

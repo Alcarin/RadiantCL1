@@ -108,10 +108,10 @@
       "ready": "Listo",
       "error": "Error: {{message}}",
       "aborted": "Conexión abortada por el usuario",
-      "security_warning": "Atención: El servidor requiere protocolos de seguridad obsoletos (ej. diffie-hellman-group1-sha1, ssh-rsa)."
+      "security_warning": "{{message}}"
     },
-    "securityWarningTitle": "Protocolos Obsoletos Detectados",
-    "securityWarningDesc": "Este servidor solo admite algoritmos de cifrado obsoletos. Continuar puede exponer la comunicación a riesgos de seguridad. ¿Desea autorizar el uso de estos protocolos?",
+    "securityWarningTitle": "Protocolos obsoletos detectados",
+    "securityWarningDesc": "{{message}}",
     "authorizeAndConnect": "Autorizar y Conectar",
     "rememberSecurityPreference": "Recordar esta elección para este host",
     "connectionError": "Error de Conexión",

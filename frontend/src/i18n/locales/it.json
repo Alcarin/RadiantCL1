@@ -107,10 +107,10 @@
       "ready": "Pronto",
       "error": "Errore: {{message}}",
       "aborted": "Connessione annullata dall'utente",
-      "security_warning": "Attenzione: Il server richiede protocolli di sicurezza deprecati (es. diffie-hellman-group1-sha1, ssh-rsa)."
+      "security_warning": "{{message}}"
     },
     "securityWarningTitle": "Protocolli Deprecati Rilevati",
-    "securityWarningDesc": "Questo server supporta solo algoritmi di crittografia obsoleti. Procedere potrebbe esporre la comunicazione a rischi di sicurezza. Vuoi autorizzare l'uso di questi protocolli?",
+    "securityWarningDesc": "{{message}}",
     "authorizeAndConnect": "Autorizza e Connetti",
     "rememberSecurityPreference": "Ricorda questa scelta per questo host",
     "connectionError": "Errore di Connessione",

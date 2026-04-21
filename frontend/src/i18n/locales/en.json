@@ -109,10 +109,10 @@
       "ready": "Ready",
       "error": "Error: {{message}}",
       "aborted": "Connection aborted by user",
-      "security_warning": "Warning: The server requires deprecated security protocols (e.g., diffie-hellman-group1-sha1, ssh-rsa)."
+      "security_warning": "{{message}}"
     },
     "securityWarningTitle": "Deprecated Protocols Detected",
-    "securityWarningDesc": "This server only supports obsolete encryption algorithms. Proceeding may expose the communication to security risks. Do you want to authorize the use of these protocols?",
+    "securityWarningDesc": "{{message}}",
     "authorizeAndConnect": "Authorize and Connect",
     "rememberSecurityPreference": "Remember this choice for this host",
     "connectionError": "Connection Error",

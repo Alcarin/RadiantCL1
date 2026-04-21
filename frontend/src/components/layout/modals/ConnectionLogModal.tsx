@@ -143,7 +143,7 @@ export const ConnectionLogModal: React.FC<ConnectionLogModalProps> = ({
               <Icon name="alertTriangle" size={20} className="text-orange-500 shrink-0" />
               <div className="text-[12px] text-rd-text">
                 <p className="font-bold">{t('modals.securityWarningTitle')}</p>
-                <p className="opacity-80">{t('modals.securityWarningDesc')}</p>
+                <p className="opacity-80">{t('modals.securityWarningDesc', { message: securityWarning.message })}</p>
               </div>
             </div>
             

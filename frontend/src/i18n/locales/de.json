@@ -100,10 +100,10 @@
       "ready": "Bereit",
       "error": "Fehler: {{message}}",
       "aborted": "Verbindung durch Benutzer abgebrochen",
-      "security_warning": "Warnung: Der Server erfordert veraltete Sicherheitsprotokolle (z.B. diffie-hellman-group1-sha1, ssh-rsa)."
+      "security_warning": "{{message}}"
     },
     "securityWarningTitle": "Veraltete Protokolle erkannt",
-    "securityWarningDesc": "Dieser Server unterstützt nur veraltete Verschlüsselungsalgorithmen. Das Fortfahren kann die Kommunikation Sicherheitsrisiken aussetzen. Möchten Sie die Verwendung dieser Protokolle autorisieren?",
+    "securityWarningDesc": "{{message}}",
     "authorizeAndConnect": "Autorisieren und Verbinden",
     "rememberSecurityPreference": "Diese Auswahl für diesen Host merken",
     "connectionError": "Verbindungsfehler",

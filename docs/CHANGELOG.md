@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Legacy SSH Protocol Support**: Added opt-in support for obsolete security algorithms (e.g., diffie-hellman-group1-sha1, ssh-rsa) to enable connections with legacy networking equipment.
+- **Extended Legacy SSH Support**: Expanded the set of supported algorithms to include `arcfour`, `blowfish-cbc`, `cast128-cbc`, and `hmac-md5` for full compatibility with very old hardware (e.g., Cisco IOS 1.99).
+- **Smart SSH Error Parsing**: Implemented backend logic to extract server-offered algorithms from "no common algorithm" errors and provide transparent, dynamic feedback in the security warning modal.
 - **Security Warning Modal**: New interactive dialog that appears during SSH handshake failures, allowing users to authorize deprecated protocols for the current session or permanently for the host.
 - **Pre-authorization Toggle**: Added "Authorize deprecated security protocols" checkbox to the Host creation/edit modal for proactive configuration of legacy devices.
 - **Connection Progress Modal**: New real-time visual feedback for SSH and Telnet connections, providing granular log steps (TCP, Handshake, Authentication, etc.).
