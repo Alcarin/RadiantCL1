@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Monaco Commit Decorations**: Glyph-margin gold dot, overview ruler tick and subtle line highlight at each commit boundary, with a Markdown hover tooltip showing the local timestamp and session direction.
 - **Commit Info Bar**: Row below the timeline showing the current commit timestamp (system locale, 24 h, gold) and session direction (e.g. `Server Debian → RadiantCL1`), with a full tooltip when truncated.
 - **Log Viewer Tab Labels**: Tabs display `host  date time` (system locale, 24 h) instead of raw filenames, with a native `title` tooltip exposing the full label on hover.
+- **Adaptive Sidebar Sections**: Implemented "auto-height" for the Active Connections section, ensuring it only occupies the necessary vertical space and allows the Saved Hosts tree to maximize its visibility.
 
 ### Changed
 
@@ -68,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Date/Time Consistency**: All date/time values across the application (log player tab labels, info bar, glyph tooltips, history tree nodes) use the operating system locale (`undefined`) with explicit 24-hour format, ensuring consistent display regardless of the application language setting.
 - **Log Filename Timestamp Parsing**: `GetSessionLogs` now calls `time.ParseInLocation(..., time.Local)` so session timestamps derived from filenames reflect the machine's local timezone instead of UTC.
 - **Integrated Settings Access**: Connected the sidebar gear icon to the Preferences modal, enabling direct access to application settings via a new event-driven communication (app:open-preferences).
+- **Streamlined UI**: Hidden the "Terminal / Console" bottom panel to maximize vertical workspace, with the capability to restore it via layout configuration if needed.
 
 ### Removed
 

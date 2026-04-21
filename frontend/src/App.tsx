@@ -426,7 +426,7 @@ function App() {
         statusBar={<StatusBar />}
         topBar={<MenuBar onOpenFile={handleOpenConfig} />}
         sideBarVisible={sideBarVisible}
-        bottomPanelVisible={true}
+        bottomPanelVisible={false}
       />
 
       <ProtocolConnectModal 

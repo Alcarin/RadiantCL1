@@ -277,7 +277,7 @@ export const ConnectionsView: React.FC = () => {
           title={t('common.activeConnections')}
           actions={<ActionButtonProper icon="plus" title={t('common.connect')} onClick={() => {}} />}
         >
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-initial overflow-hidden">
             {activeConnections.length === 0 ? (
               <div className="px-5 py-2 text-[12px] text-rd-text-dim italic">{t('common.noActiveConnections')}</div>
             ) : (
@@ -289,6 +289,7 @@ export const ConnectionsView: React.FC = () => {
                 onMove={handleMoveActive}
                 disableDropInto={true}
                 showGuides={false}
+                height={(mappedActiveConnections.length * 22) + 4}
               />
             )}
           </div>

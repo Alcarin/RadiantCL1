@@ -27,6 +27,7 @@ interface TreeViewProps {
   className?: string;
   showGuides?: boolean;
   disableDropInto?: boolean;
+  height?: number;
 }
 
 export interface TreeViewHandle {
@@ -225,6 +226,7 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   initialOpenState,
   onNodeDoubleClick,
   onNodeContextMenu,
+  height,
 }, ref) => {
   const treeRef = useRef<TreeApi<TreeNode>>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -265,14 +267,14 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   };
 
   return (
-    <div ref={containerRef} className={cn("flex flex-col w-full flex-1 min-h-0", className)}>
+    <div ref={containerRef} className={cn("flex flex-col w-full min-h-0", !height && "flex-1", className)}>
       <Tree
         ref={treeRef}
         data={nodes}
         initialOpenState={initialOpenState}
         openByDefault={false}
         width={dimensions.width || "100%"}
-        height={dimensions.height || 400} // Default if not measured yet
+        height={height || dimensions.height || 400} // Default if not measured yet
         rowHeight={22}
         indent={12}
         padding={0}
