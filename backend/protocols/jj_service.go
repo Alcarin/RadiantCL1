@@ -104,6 +104,7 @@ func (s *JJService) InitRepo() error {
 	// Verifica se c'è già un repo jj (controlla la cartella .jj)
 	if _, err := os.Stat(filepath.Join(hostsDir, ".jj")); os.IsNotExist(err) {
 		cmd := exec.Command(s.binaryPath, "git", "init") // Inizializza con backend git per massima interoperabilità
+		prepareCommand(cmd)
 		cmd.Dir = hostsDir
 		if output, err := cmd.CombinedOutput(); err != nil {
 			outStr := string(output)
@@ -143,6 +144,7 @@ func (s *JJService) Commit(sessionId, hostname, direction string) error {
 	// In JJ, per creare una nuova revisione atomica dei cambiamenti correnti:
 	// Usiamo 'jj commit -m message' per chiudere la revisione corrente e iniziarne una nuova.
 	cmd := exec.Command(s.binaryPath, "commit", "-m", message)
+	prepareCommand(cmd)
 	cmd.Dir = hostsDir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("jj commit failed: %v, output: %s", err, string(output))
@@ -174,6 +176,7 @@ func (s *JJService) ListRevisions(hostName, filename string) ([]LogRevision, err
 	// Utilizziamo il percorso col formato UNIX per jj passandolo in fondo
 	normalizedPath := filepath.ToSlash(relPath)
 	cmd := exec.Command(s.binaryPath, "log", "--no-graph", "-r", "::", "--template", template, normalizedPath)
+	prepareCommand(cmd)
 	cmd.Dir = hostsDir
 
 	fmt.Printf("[DEBUG-JJ] Esecuzione: %s\n", cmd.String())
@@ -236,6 +239,7 @@ func (s *JJService) GetRevisionContent(revision, hostName, filename string) (str
 	normalizedPath := filepath.ToSlash(relPath)
 
 	cmd := exec.Command(s.binaryPath, "file", "show", "-r", revision, normalizedPath)
+	prepareCommand(cmd)
 	cmd.Dir = hostsDir
 
 	output, err := cmd.CombinedOutput()

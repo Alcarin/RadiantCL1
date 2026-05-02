@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **UI Performance**: Eliminated console "chatter" and redundant DB writes by disabling individual node persistence during batch expansion.
+- **Invisible JJ Execution (Windows)**: Resolved an issue where external `jj` commands would trigger visible, short-lived DOS windows that stole focus. Implemented native Windows process attributes (`HideWindow`) for completely silent background execution.
 - **Icon Type Safety**: Resolved a TypeScript compilation error regarding the missing `copy` icon name.
 - **Telnet Protocol Reliability**: Fixed an issue where no input or output was visible after establishing a Telnet connection.
 - **Refined handshaking logic**: SSH connection workflow now attempts modern protocols first and only escalates to legacy algorithms upon explicit user authorization.

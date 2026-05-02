@@ -3,7 +3,10 @@
 
 package protocols
 
-import _ "embed"
+import (
+	_ "embed"
+	"os/exec"
+)
 
 //go:embed bin/linux/jj
 var jjBinary []byte
@@ -11,3 +14,5 @@ var jjBinary []byte
 func getEmbeddedJJ() ([]byte, string) {
 	return jjBinary, "jj"
 }
+
+func prepareCommand(cmd *exec.Cmd) {}
