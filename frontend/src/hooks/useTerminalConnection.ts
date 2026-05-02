@@ -21,6 +21,8 @@ export interface ConnectionState {
   isConnecting: boolean;
 }
 
+const globalConnectingRef = { current: false };
+
 export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: string, name: string, hostId: number, icon: IconName }) => void) => {
   const { t } = useTranslation();
   const [state, setState] = useState<ConnectionState>({
@@ -55,6 +57,13 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     password: string = '',
     allowDeprecated: boolean = false
   ) => {
+    if (globalConnectingRef.current) {
+      console.warn("[useTerminalConnection] Connection already in progress, ignoring duplicate call.");
+      return;
+    }
+
+    globalConnectingRef.current = true;
+
     // Salviamo i parametri per un eventuale retry
     lastParams.current = { hostId, name, icon, address, port, protocolType, username, password };
 
@@ -75,6 +84,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     try {
       await ConnectTerminal(sessionId, hostId, address, port, protocolType, username, password, allowDeprecated);
     } catch (err) {
+      globalConnectingRef.current = false;
       setState(prev => ({
         ...prev,
         isConnecting: false,
@@ -91,6 +101,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
   const abort = useCallback(async () => {
     if (state.sessionId) {
       await AbortConnection(state.sessionId);
+      globalConnectingRef.current = false;
       setState(prev => ({
         ...prev,
         isConnecting: false,
@@ -101,6 +112,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
         }]
       }));
     } else {
+      globalConnectingRef.current = false;
       setState(prev => ({ ...prev, isOpen: false, isConnecting: false }));
     }
   }, [state.sessionId]);
@@ -118,6 +130,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
       const { step, message } = data;
       
       if (step === 'ready') {
+        globalConnectingRef.current = false;
         onConnectionSuccess({
           sessionId: state.sessionId!,
           name: state.hostName,
@@ -126,6 +139,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
         });
         setState(prev => ({ ...prev, isConnecting: false, isOpen: false }));
       } else if (step === 'error') {
+        globalConnectingRef.current = false;
         setState(prev => ({
           ...prev,
           isConnecting: false,
@@ -137,6 +151,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
           }]
         }));
       } else if (step === 'security_warning') {
+        globalConnectingRef.current = false;
         setState(prev => ({
           ...prev,
           isConnecting: false,
@@ -174,8 +189,8 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
       }
     };
 
-    EventsOn('terminal:progress', handleProgress);
-    return () => EventsOff('terminal:progress');
+    const offProgress = EventsOn('terminal:progress', handleProgress);
+    return () => offProgress();
   }, [state.isOpen, state.sessionId, state.hostName, state.hostId, state.icon, onConnectionSuccess]);
 
   const retry = useCallback(async (allowDeprecated: boolean = true) => {

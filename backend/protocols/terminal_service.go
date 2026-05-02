@@ -608,14 +608,15 @@ func (s *TerminalService) GetSessions() []SessionInfo {
 
 func (s *TerminalService) RemoveSession(id string) {
 	s.mu.Lock()
-	_, ok := s.sessions[id]
+	ts, ok := s.sessions[id]
 	if ok {
 		delete(s.sessions, id)
 	}
 	s.mu.Unlock()
 
 	if ok {
-		s.CloseSession(id)
+		s.cleanupSession(ts)
+		s.emit("terminal:closed:"+id)
 	}
 
 	s.emit("terminal:sessions-updated")
@@ -630,26 +631,43 @@ func (s *TerminalService) CloseSession(id string) {
 	s.mu.Unlock()
 
 	if ok {
-		ts.Cancel()
-		if ts.SSHSession != nil {
-			ts.SSHSession.Close()
-		}
-		if ts.SSHClient != nil {
-			ts.SSHClient.Close()
-		}
-		if ts.Conn != nil {
-			ts.Conn.Close()
-		}
-		if ts.logger != nil {
-			ts.logger.Close()
-			// Commit finale alla chiusura della sessione solo se ci sono dati pendenti
-			if ts.dirty {
-				ts.dirty = false
-				s.jj.Commit(ts.ID, ts.Name, "Session Closed")
-			}
-		}
+		s.cleanupSession(ts)
 		s.emit("terminal:closed:"+id)
 		s.emit("terminal:sessions-updated")
+	}
+}
+
+func (s *TerminalService) cleanupSession(ts *TerminalSession) {
+	if ts == nil {
+		return
+	}
+
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	// Evitiamo doppie chiusure se possibile, anche se le Close() di Go sono generalmente safe
+	ts.Cancel()
+	
+	if ts.SSHSession != nil {
+		ts.SSHSession.Close()
+		ts.SSHSession = nil
+	}
+	if ts.SSHClient != nil {
+		ts.SSHClient.Close()
+		ts.SSHClient = nil
+	}
+	if ts.Conn != nil {
+		ts.Conn.Close()
+		ts.Conn = nil
+	}
+	if ts.logger != nil {
+		ts.logger.Close()
+		// Commit finale alla chiusura della sessione solo se ci sono dati pendenti
+		if ts.dirty {
+			ts.dirty = false
+			s.jj.Commit(ts.ID, ts.Name, "Session Closed")
+		}
+		ts.logger = nil
 	}
 }
 

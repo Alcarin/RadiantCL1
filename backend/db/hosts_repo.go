@@ -84,6 +84,12 @@ func (m *Manager) SetFolderExpanded(id int64, expanded bool) error {
 	return err
 }
 
+// SetAllFoldersExpanded updates the expanded state of all folders.
+func (m *Manager) SetAllFoldersExpanded(expanded bool) error {
+	_, err := m.DB.Exec("UPDATE folders SET is_expanded = ?", expanded)
+	return err
+}
+
 // AddFolder inserts a new folder.
 func (m *Manager) AddFolder(f Folder) (int64, error) {
 	res, err := m.DB.Exec("INSERT INTO folders (parent_id, label, icon, is_expanded, sort_order) VALUES (?, ?, ?, ?, ?)",

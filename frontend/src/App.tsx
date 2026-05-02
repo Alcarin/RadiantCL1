@@ -226,12 +226,20 @@ function App() {
       setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
     };
 
-    EventsOn('app:open-terminal', handleOpenTerminal);
+    EventsOff('app:host-updated');
     EventsOn('app:host-updated', handleHostUpdated);
+    
+    EventsOff('app:protocol-request');
     EventsOn('app:protocol-request', handleProtocolRequest);
+    
+    EventsOff('app:open-log');
     EventsOn('app:open-log', handleOpenLog);
 
     // Global listener for connection requests from other components
+    // We use a timestamp to debounce potential multiple triggers in a single tick
+    let lastConnectTime = 0;
+    
+    EventsOff('app:connect');
     const offConnect = EventsOn('app:connect', (data: { 
       hostId: number, 
       name: string, 
@@ -242,6 +250,10 @@ function App() {
       user?: string, 
       pass?: string 
     }) => {
+      const now = Date.now();
+      if (now - lastConnectTime < 100) return; // Debounce 100ms
+      lastConnectTime = now;
+
       startConnection(
         data.hostId, 
         data.name, 
@@ -255,7 +267,6 @@ function App() {
     });
 
     return () => {
-      EventsOff('app:open-terminal');
       EventsOff('app:host-updated');
       EventsOff('app:protocol-request');
       EventsOff('app:open-log');

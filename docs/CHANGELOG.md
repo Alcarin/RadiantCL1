@@ -50,10 +50,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Commit Info Bar**: Row below the timeline showing the current commit timestamp (system locale, 24 h, gold) and session direction (e.g. `Server Debian → RadiantCL1`), with a full tooltip when truncated.
 - **Log Viewer Tab Labels**: Tabs display `host  date time` (system locale, 24 h) instead of raw filenames, with a native `title` tooltip exposing the full label on hover.
 - **Adaptive Sidebar Sections**: Implemented "auto-height" for the Active Connections section, ensuring it only occupies the necessary vertical space and allows the Saved Hosts tree to maximize its visibility.
+- **Ad-Hoc Connection Modal**: New "Quick Connection" dialog for one-time sessions, supporting SSH credential profiles or "Ask" mode.
+- **Batch Folder Expansion**: Implemented `ToggleAllFoldersExpanded` for instant, single-query persistence of the entire tree state.
+- **Icon Library Update**: Added the `copy` icon to the internal icon system.
+- **Enhanced Ad-Hoc Authentication**: Integrated dedicated username and password fields in the "Quick Connect" modal, supporting both manual entry and secure resolution from the Vault.
 
 ### Changed
 
+- **Host List Toolbar**: Replaced individual Expand/Collapse buttons with a single dynamic toggle for improved sidebar space.
+- **Host Context Menu**: Added "Clone" and "Delete" actions to the context menu, removing inline icons for a cleaner look.
+- **Conditional Host Form**: The Credential Profile section now automatically hides for non-SSH protocols (Telnet).
+- **Context Menu Aesthetics**: Refined layout with better spacing, separators, and animations for a more professional feel.
 - **Session List Visibility**: The "Active Connections" sidebar now strictly filters for successfully established sessions, preventing "phantom" or failed connection attempts from cluttering the UI.
+
+### Fixed
+
+- **UI Performance**: Eliminated console "chatter" and redundant DB writes by disabling individual node persistence during batch expansion.
+- **Icon Type Safety**: Resolved a TypeScript compilation error regarding the missing `copy` icon name.
+- **Telnet Protocol Reliability**: Fixed an issue where no input or output was visible after establishing a Telnet connection.
 - **Refined handshaking logic**: SSH connection workflow now attempts modern protocols first and only escalates to legacy algorithms upon explicit user authorization.
 - **Internationalization Consistency**: Standardized the `credentialManager` translation key across all supported languages (EN, IT, ES, FR, DE) within the `common` namespace.
 - **Protocol Data Consistency**: Migrated protocol handler event emission to explicit string maps to resolve Go/JS case-sensitivity conflicts.
@@ -66,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Indicators**: "Disconnected" state now uses a **Red X icon** instead of a simple dot to improve accessibility and clear distinction for color-blind users.
 - **Host Configuration**: Updated host form to support credential profile selection.
 - **Connection Workflow**: Terminal connections now automatically resolve credentials from the vault, skipping manual login for predefined profiles.
+- **Atomic Connection Logic**: Implemented a global connection lock (`globalConnectingRef`) and a 100ms debounce on the frontend to strictly prevent duplicate session entries from rapid UI triggers (double-clicks, enter key).
+- **Isolated Event Cleanup**: Fixed a bug where closing one connection would prematurely unregister progress listeners for all other active connection attempts.
+- **Ad-Hoc Credential Resolution**: Resolved a critical issue where "Quick Connections" were initiated without credentials; fixed the internal logic to correctly fetch passwords from the Vault before emitting connection events.
+- **Session Resource Leak Fix**: Corrected a logic error in the backend where closing a terminal tab failed to terminate the physical SSH/TCP connection; implemented a centralized cleanup handler to ensure all sockets are closed even after session removal.
 - **Date/Time Consistency**: All date/time values across the application (log player tab labels, info bar, glyph tooltips, history tree nodes) use the operating system locale (`undefined`) with explicit 24-hour format, ensuring consistent display regardless of the application language setting.
 - **Log Filename Timestamp Parsing**: `GetSessionLogs` now calls `time.ParseInLocation(..., time.Local)` so session timestamps derived from filenames reflect the machine's local timezone instead of UTC.
 - **Integrated Settings Access**: Connected the sidebar gear icon to the Preferences modal, enabling direct access to application settings via a new event-driven communication (app:open-preferences).

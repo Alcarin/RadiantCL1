@@ -190,28 +190,30 @@ export const HostFormModal: React.FC<HostFormModalProps> = ({
             />
           </div>
 
-          <div className="col-span-2">
-            <div className="flex items-center justify-between mb-1">
-              <ModalLabel className="mb-0">{t('common.credentialProfile')}</ModalLabel>
-              <button 
-                type="button" 
-                onClick={onOpenCredentials}
-                className="text-[11px] text-rd-accent hover:underline flex items-center gap-1"
+          {formData.type === 'ssh' && (
+            <div className="col-span-2">
+              <div className="flex items-center justify-between mb-1">
+                <ModalLabel className="mb-0">{t('common.credentialProfile')}</ModalLabel>
+                <button 
+                  type="button" 
+                  onClick={onOpenCredentials}
+                  className="text-[11px] text-rd-accent hover:underline flex items-center gap-1"
+                >
+                  <Icon name="settings" size={10} />
+                  {t('common.manage')}
+                </button>
+              </div>
+              <ModalSelect
+                value={formData.credentialId || 0}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, credentialId: parseInt(e.target.value) })}
               >
-                <Icon name="settings" size={10} />
-                {t('common.manage')}
-              </button>
+                <option value="0">{t('common.askEveryTime') || 'Ask every time'}</option>
+                {credentials.map(c => (
+                  <option key={c.id} value={c.id}>{c.label} ({c.username})</option>
+                ))}
+              </ModalSelect>
             </div>
-            <ModalSelect
-              value={formData.credentialId || 0}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, credentialId: parseInt(e.target.value) })}
-            >
-              <option value="0">{t('common.askEveryTime') || 'Ask every time'}</option>
-              {credentials.map(c => (
-                <option key={c.id} value={c.id}>{c.label} ({c.username})</option>
-              ))}
-            </ModalSelect>
-          </div>
+          )}
 
           {formData.type === 'ssh' && (
             <div className="col-span-2">

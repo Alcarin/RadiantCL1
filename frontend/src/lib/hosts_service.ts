@@ -7,7 +7,8 @@ import {
   DeleteFolder as WailsDeleteFolder,
   UpdateHost as WailsUpdateHost,
   DeleteHost as WailsDeleteHost,
-  MoveItem as WailsMoveItem
+  MoveItem as WailsMoveItem,
+  ToggleAllFoldersExpanded as WailsToggleAllFoldersExpanded
 } from '../../wailsjs/go/main/App';
 import { db } from '../../wailsjs/go/models';
 import { TreeNode } from '../components/ui/TreeView';
@@ -43,6 +44,17 @@ export const HostsService = {
       await ToggleFolderExpanded(id, expanded);
     } catch (err) {
       console.error('Failed to toggle folder state:', err);
+    }
+  },
+
+  /**
+   * Persists the expanded state of all folders.
+   */
+  async toggleAllFolders(expanded: boolean): Promise<void> {
+    try {
+      await WailsToggleAllFoldersExpanded(expanded);
+    } catch (err) {
+      console.error('Failed to toggle all folders state:', err);
     }
   },
 

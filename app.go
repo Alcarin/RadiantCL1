@@ -188,6 +188,14 @@ func (a *App) ToggleFolderExpanded(id int64, expanded bool) error {
 	return a.dbManager.SetFolderExpanded(id, expanded)
 }
 
+// ToggleAllFoldersExpanded updates the expanded state of all folders
+func (a *App) ToggleAllFoldersExpanded(expanded bool) error {
+	if a.dbManager == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.SetAllFoldersExpanded(expanded)
+}
+
 // UpdateFolder updates an existing folder in the database
 func (a *App) UpdateFolder(f db.Folder) error {
 	if a.dbManager == nil {

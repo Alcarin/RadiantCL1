@@ -8,6 +8,7 @@ import { FolderFormModal } from './modals/FolderFormModal';
 import { DeleteConfirmModal } from './modals/DeleteConfirmModal';
 import { LoginModal } from './modals/LoginModal';
 import { CredentialsModal } from './modals/CredentialsModal';
+import { AdHocConnectModal } from './modals/AdHocConnectModal';
 import { db } from '../../../wailsjs/go/models';
 import { getDndManager } from '../../lib/dnd';
 import { EventsEmit, EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
@@ -76,6 +77,9 @@ export const ConnectionsView: React.FC = () => {
     isEdit: boolean;
     node?: TreeNode;
   }>({ isOpen: false, type: null, isEdit: false });
+  const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false);
+  const [isAllExpanded, setIsAllExpanded] = useState(false);
+  const skipTogglePersistence = useRef(false);
 
   const loadHosts = useCallback(async () => {
     if (hosts.length === 0) setIsLoading(true);
@@ -116,13 +120,26 @@ export const ConnectionsView: React.FC = () => {
     return HostsService.getExpandedMap(hosts);
   }, [hosts]); // Recalculate when hosts change, though Arborist only uses it once
 
-  const collapseAll = useCallback(() => {
-    savedHostsTreeRef.current?.tree?.closeAll();
-  }, []);
-
-  const expandAll = useCallback(() => {
-    savedHostsTreeRef.current?.tree?.openAll();
-  }, []);
+  const toggleExpandAll = useCallback(async () => {
+    const newState = !isAllExpanded;
+    skipTogglePersistence.current = true;
+    
+    if (newState) {
+      savedHostsTreeRef.current?.tree?.openAll();
+    } else {
+      savedHostsTreeRef.current?.tree?.closeAll();
+    }
+    
+    setIsAllExpanded(newState);
+    
+    // Persist batch state to DB
+    await HostsService.toggleAllFolders(newState);
+    
+    // Give some time for internal events to fire before re-enabling individual persistence
+    setTimeout(() => {
+      skipTogglePersistence.current = false;
+    }, 100);
+  }, [isAllExpanded]);
 
   const handleSaveHost = async (hostData: Partial<db.Host>) => {
     if (modalState.isEdit && modalState.node) {
@@ -146,6 +163,8 @@ export const ConnectionsView: React.FC = () => {
     }
     loadHosts();
   };
+
+
 
   const handleConnect = async (node: TreeNode, username = '', password = '') => {
      if (node.id.startsWith('f-')) return;
@@ -189,6 +208,20 @@ export const ConnectionsView: React.FC = () => {
        }
      }
      setContextMenu(null);
+  };
+
+  const handleClone = (node: TreeNode) => {
+    // Clona i dati dell'host (rimuovendo ID o etichetta se necessario, ma HostFormModal li gestisce)
+    const cloneData = { ...node.data };
+    // Potremmo voler resettare l'ID se presente nei dati, ma HostsService.addHost lo ignora
+    setModalState({ 
+      isOpen: true, 
+      type: 'host', 
+      isEdit: false, 
+      node: { ...node, label: `${node.label} (Clone)` }, // Label temporanea per visualizzazione
+      // In realtà HostFormModal prende initialData, quindi mettiamo lì il clone
+    });
+    setContextMenu(null);
   };
 
   const onNodeContextMenu = (e: React.MouseEvent, node: TreeNode) => {
@@ -245,37 +278,14 @@ export const ConnectionsView: React.FC = () => {
   };
 
 
-  const renderNodeActions = (node: any) => (
-    <>
-      <button 
-        className="p-0.5 hover:bg-white/10 rounded text-rd-text-dim hover:text-rd-text-active"
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          setModalState({ isOpen: true, type: node.id.startsWith('f-') ? 'folder' : 'host', isEdit: true, node }); 
-        }}
-        title={t('common.edit')}
-      >
-        <Icon name="settings" size={12} />
-      </button>
-      <button 
-        className="p-0.5 hover:bg-white/10 rounded text-rd-text-dim hover:text-rd-text-active"
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          setModalState({ isOpen: true, type: 'delete', isEdit: false, node }); 
-        }}
-        title={t('common.delete')}
-      >
-        <Icon name="close" size={12} />
-      </button>
-    </>
-  );
+  const renderNodeActions = (node: any) => null;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 border-b border-rd-border">
         <SideBarSection 
           title={t('common.activeConnections')}
-          actions={<ActionButtonProper icon="plus" title={t('common.connect')} onClick={() => {}} />}
+          actions={<ActionButtonProper icon="plus" title={t('common.connect')} onClick={() => setIsAdHocModalOpen(true)} />}
         >
           <div className="flex flex-col flex-initial overflow-hidden">
             {activeConnections.length === 0 ? (
@@ -304,8 +314,11 @@ export const ConnectionsView: React.FC = () => {
               <ActionButtonProper icon="plus" title={t('common.addHost')} onClick={() => setModalState({ isOpen: true, type: 'host', isEdit: false })} />
               <ActionButtonProper icon="folderPlus" title={t('common.addFolder')} onClick={() => setModalState({ isOpen: true, type: 'folder', isEdit: false })} />
               <ActionButtonProper icon="keyRound" title={t('modals.credentialManager')} onClick={() => setIsCredentialsModalOpen(true)} />
-              <ActionButtonProper icon="fold" title={t('common.collapseAll')} onClick={collapseAll} />
-              <ActionButtonProper icon="maximize" title={t('common.expandAll')} onClick={expandAll} />
+              <ActionButtonProper 
+                icon={isAllExpanded ? "fold" : "maximize"} 
+                title={t('common.toggleExpand')} 
+                onClick={toggleExpandAll} 
+              />
               <ActionButtonProper icon="refresh" title={t('common.reload')} onClick={loadHosts} />
             </>
           }
@@ -320,6 +333,7 @@ export const ConnectionsView: React.FC = () => {
                 selectedId={selectedHostId}
                 onSelect={(node) => setSelectedHostId(node.id)}
                 onToggleExpand={(id, expanded) => {
+                  if (skipTogglePersistence.current) return;
                   HostsService.toggleFolder(id, expanded);
                 }}
                 renderNodeActions={renderNodeActions}
@@ -337,27 +351,49 @@ export const ConnectionsView: React.FC = () => {
 
       {contextMenu && (
         <div 
-          className="fixed z-50 bg-rd-dropdown border border-rd-border shadow-xl rounded-md py-1 min-w-[160px]"
+          className="fixed z-50 bg-rd-dropdown border border-rd-border shadow-xl rounded-md py-1.5 min-w-[160px] animate-in fade-in zoom-in duration-100"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
           <button 
-            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-3 transition-colors"
             onClick={() => handleConnect(contextMenu.node)}
           >
-            <Icon name="network" size={14} className="text-rd-accent" />
-            <span>{t('common.connect')}</span>
+            <Icon name="terminal" size={14} className="text-rd-accent" />
+            <span className="flex-1">{t('common.connect')}</span>
           </button>
-          <div className="h-px bg-rd-border my-1" />
+          
+          <div className="h-px bg-white/10 my-1.5 mx-2" />
+          
           <button 
-            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-3 transition-colors"
             onClick={() => {
               setModalState({ isOpen: true, type: 'host', isEdit: true, node: contextMenu.node });
               setContextMenu(null);
             }}
           >
-            <Icon name="settings" size={14} />
-            <span>{t('modals.editHost')}</span>
+            <Icon name="settings" size={14} className="text-rd-text-dim" />
+            <span className="flex-1">{t('common.edit')}</span>
+          </button>
+          <button 
+            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-3 transition-colors"
+            onClick={() => handleClone(contextMenu.node)}
+          >
+            <Icon name="copy" size={14} className="text-rd-text-dim" />
+            <span className="flex-1">{t('common.clone')}</span>
+          </button>
+          
+          <div className="h-px bg-white/10 my-1.5 mx-2" />
+          
+          <button 
+            className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-rd-list-hover flex items-center gap-3 text-red-400 hover:text-red-300 transition-colors"
+            onClick={() => {
+              setModalState({ isOpen: true, type: 'delete', isEdit: false, node: contextMenu.node });
+              setContextMenu(null);
+            }}
+          >
+            <Icon name="close" size={14} />
+            <span className="flex-1">{t('common.delete')}</span>
           </button>
         </div>
       )}
@@ -386,6 +422,10 @@ export const ConnectionsView: React.FC = () => {
       <CredentialsModal 
         isOpen={isCredentialsModalOpen} 
         onClose={() => setIsCredentialsModalOpen(false)} 
+      />
+      <AdHocConnectModal 
+        isOpen={isAdHocModalOpen} 
+        onClose={() => setIsAdHocModalOpen(false)} 
       />
     </div>
   );

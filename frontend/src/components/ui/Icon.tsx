@@ -12,6 +12,7 @@ import {
   Minimize2,
   MoreHorizontal,
   Terminal,
+  Copy,
   Folder,
   Layout,
   Server,
@@ -99,6 +100,7 @@ export type IconName =
   | 'minimize'
   | 'more'
   | 'terminal'
+  | 'copy'
   | 'layout'
   | 'server'
   | 'package'
@@ -183,6 +185,7 @@ const icons: Record<IconName, React.ElementType> = {
   minimize: Minimize2,
   more: MoreHorizontal,
   terminal: Terminal,
+  copy: Copy,
   layout: Layout,
   server: Server,
   package: Package,
