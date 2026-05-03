@@ -62,6 +62,7 @@ export const AdHocConnectModal: React.FC<AdHocConnectModalProps> = ({
       }
 
       EventsEmit('app:connect', {
+        senderId: (window as any).__radiant_instance_id,
         hostId: 0,
         name: sessionName,
         icon: 'terminal',

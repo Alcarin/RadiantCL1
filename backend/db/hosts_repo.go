@@ -142,6 +142,27 @@ func (m *Manager) DeleteHost(id int64) error {
 	return err
 }
 
+// GetHostById retrieves a host by its unique ID.
+func (m *Manager) GetHostById(id int64) (*Host, error) {
+	var h Host
+	var fid, cid *int64
+	err := m.DB.QueryRow(`
+		SELECT id, folder_id, credential_id, label, icon, address, type, port, sort_order, allow_deprecated 
+		FROM hosts 
+		WHERE id = ?`, id).Scan(
+		&h.ID, &fid, &cid, &h.Label, &h.Icon, &h.Address, &h.Type, &h.Port, &h.SortOrder, &h.AllowDeprecated)
+	
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("host not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	h.FolderID = fid
+	h.CredentialID = cid
+	return &h, nil
+}
+
 // siblingItem is a helper structure for sorting.
 type siblingItem struct {
 	id  int64

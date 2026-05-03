@@ -66,6 +66,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       if (hostId === undefined) return;
       
       EventsEmit('app:connect', {
+        senderId: (window as any).__radiant_instance_id,
         hostId,
         name: node.label,
         icon: node.icon || 'terminal',

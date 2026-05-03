@@ -21,9 +21,15 @@ export interface ConnectionState {
   isConnecting: boolean;
 }
 
-const globalConnectingRef = { current: false };
+// Lock globale persistente anche ai reload dei moduli HMR
+if (!(window as any).__radiant_locks) {
+  (window as any).__radiant_locks = {
+    connecting: false
+  };
+}
+const getLocks = () => (window as any).__radiant_locks as { connecting: boolean };
 
-export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: string, name: string, hostId: number, icon: IconName }) => void) => {
+export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: string, name: string, hostId: number, icon: IconName, logFile?: string }) => void) => {
   const { t } = useTranslation();
   const [state, setState] = useState<ConnectionState>({
     isOpen: false,
@@ -55,20 +61,22 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     protocolType: string = 'ssh', 
     username: string = '', 
     password: string = '',
-    allowDeprecated: boolean = false
+    allowDeprecated: boolean = false,
+    existingSessionId?: string
   ) => {
-    if (globalConnectingRef.current) {
+    const locks = getLocks();
+    if (locks.connecting) {
       console.warn("[useTerminalConnection] Connection already in progress, ignoring duplicate call.");
       return;
     }
 
-    globalConnectingRef.current = true;
+    locks.connecting = true;
 
     // Salviamo i parametri per un eventuale retry
     lastParams.current = { hostId, name, icon, address, port, protocolType, username, password };
 
-    // Generiamo l'ID qui sul frontend per poter ascoltare gli eventi fin dal primo step
-    const sessionId = `term-${hostId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // Generiamo l'ID qui sul frontend o usiamo quello esistente
+    const sessionId = existingSessionId || `term-${hostId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     setState(prev => ({
       ...prev,
@@ -84,7 +92,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     try {
       await ConnectTerminal(sessionId, hostId, address, port, protocolType, username, password, allowDeprecated);
     } catch (err) {
-      globalConnectingRef.current = false;
+      locks.connecting = false;
       setState(prev => ({
         ...prev,
         isConnecting: false,
@@ -101,7 +109,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
   const abort = useCallback(async () => {
     if (state.sessionId) {
       await AbortConnection(state.sessionId);
-      globalConnectingRef.current = false;
+      getLocks().connecting = false;
       setState(prev => ({
         ...prev,
         isConnecting: false,
@@ -112,7 +120,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
         }]
       }));
     } else {
-      globalConnectingRef.current = false;
+      getLocks().connecting = false;
       setState(prev => ({ ...prev, isOpen: false, isConnecting: false }));
     }
   }, [state.sessionId]);
@@ -127,19 +135,21 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
     const handleProgress = (data: any) => {
       if (data.id !== state.sessionId) return;
 
-      const { step, message } = data;
+      const { step, message, logFile } = data;
       
+      const locks = getLocks();
       if (step === 'ready') {
-        globalConnectingRef.current = false;
+        locks.connecting = false;
         onConnectionSuccess({
           sessionId: state.sessionId!,
           name: state.hostName,
           hostId: state.hostId,
-          icon: state.icon
+          icon: state.icon,
+          logFile: logFile
         });
         setState(prev => ({ ...prev, isConnecting: false, isOpen: false }));
       } else if (step === 'error') {
-        globalConnectingRef.current = false;
+        locks.connecting = false;
         setState(prev => ({
           ...prev,
           isConnecting: false,
@@ -151,7 +161,7 @@ export const useTerminalConnection = (onConnectionSuccess: (data: { sessionId: s
           }]
         }));
       } else if (step === 'security_warning') {
-        globalConnectingRef.current = false;
+        locks.connecting = false;
         setState(prev => ({
           ...prev,
           isConnecting: false,

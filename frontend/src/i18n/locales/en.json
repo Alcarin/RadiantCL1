@@ -54,6 +54,10 @@
     "ready": "Ready",
     "reload": "Reload",
     "sourceControl": "Source Control",
+    "exportTxt": "TXT",
+    "exportHtml": "HTML",
+    "exportAsTxtTitle": "Export as plain text",
+    "exportAsHtmlTitle": "Export as HTML (with colors)",
 
 
     "creditsTitle": "Credits - RadiantCL1",
@@ -154,5 +158,9 @@
     "lucideDesc": "Beautiful & Consistent Icons",
     "tailwindDesc": "Utility-first Styling",
     "allRightsReserved": "All rights reserved."
+  },
+  "terminal": {
+    "connectionInterrupted": "[!] Connection interrupted. Press (R) to reconnect or (Q) to quit.",
+    "reconnectSession": "RECONNECT SESSION"
   }
 }

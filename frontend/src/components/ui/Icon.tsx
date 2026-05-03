@@ -80,11 +80,15 @@ import {
   Square,
   SkipBack,
   SkipForward,
+  FileText,
+  Download,
 } from 'lucide-react';
 
 
 export type IconName =
   | 'file'
+  | 'fileText'
+  | 'download'
   | 'folder'
   | 'folderOpen'
   | 'folderPlus'
@@ -172,6 +176,8 @@ export type IconName =
 
 const icons: Record<IconName, React.ElementType> = {
   file: File,
+  fileText: FileText,
+  download: Download,
   folder: Folder,
   folderOpen: FolderOpen,
   search: Search,

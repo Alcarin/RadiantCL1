@@ -53,6 +53,10 @@
     "prevFrame": "Frame Precedente",
     "ready": "Pronto",
     "sourceControl": "Controllo Sorgente",
+    "exportTxt": "TXT",
+    "exportHtml": "HTML",
+    "exportAsTxtTitle": "Esporta come testo semplice",
+    "exportAsHtmlTitle": "Esporta come HTML (con colori)",
 
     "creditsTitle": "Crediti - RadiantCL1",
     "appDescription": "Terminale Cisco & Config Explorer Professionale",
@@ -152,5 +156,9 @@
     "lucideDesc": "Icone Bellissime e Coerenti",
     "tailwindDesc": "Styling Utility-first",
     "allRightsReserved": "Tutti i diritti riservati."
+  },
+  "terminal": {
+    "connectionInterrupted": "[!] Connessione interrotta. Premi (R) per riconnettere o (Q) per chiudere.",
+    "reconnectSession": "RICONNETTI SESSIONE"
   }
 }

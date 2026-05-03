@@ -54,6 +54,10 @@
     "ready": "Prêt",
     "reload": "Recharger",
     "sourceControl": "Gestion de Source",
+    "exportTxt": "TXT",
+    "exportHtml": "HTML",
+    "exportAsTxtTitle": "Exporter en texte brut",
+    "exportAsHtmlTitle": "Exporter en HTML (avec couleurs)",
     "creditsTitle": "Crédits - RadiantCL1",
     "appDescription": "Terminal Cisco & Explorateur de Configuration Professionnel",
     "builtWith": "Construit avec des technologies modernes",
@@ -134,5 +138,9 @@
     "lucideDesc": "Icônes magnifiques et cohérentes",
     "tailwindDesc": "Stylage axé sur les utilitaires",
     "allRightsReserved": "Tous droits réservés."
+  },
+  "terminal": {
+    "connectionInterrupted": "[!] Connexion interrompue. Appuyez sur (R) pour reconnecter ou (Q) pour quitter.",
+    "reconnectSession": "RECONNECTER LA SESSION"
   }
 }

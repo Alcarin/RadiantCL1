@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Dynamic Workspace Management (Split-View)**: Implemented advanced panel management via `react-mosaic-component`, allowing users to split the workspace horizontally or vertically by dragging tabs to screen edges.
+- **Full State & Layout Persistence**: The application now automatically saves and restores the exact workspace configuration (open terminals, logs, files, and their relative positions) upon restart using a SQLite-backed state manager.
+- **Terminal Reconnection Engine**: Introduced a centralized `TerminalManager` and an interactive inline widget that appears within terminal sessions upon disconnection, supporting instant reconnection (`[R]`) or clean session closure (`[Q]`).
+- **Forensic Log Export**: Added a new toolbar to the Log Viewer with support for exporting session content as plain text (TXT) or colorized HTML documents that preserve ANSI formatting.
+- **Multi-Instance Isolation**: Implemented a unique instance ID system to filter global Wails events, preventing cross-tab interference when running multiple app instances or windows.
+- **Premium Loading Overlay**: Added a high-fidelity animated startup screen that provides smooth visual feedback during workspace state rehydration.
 - **Legacy SSH Protocol Support**: Added opt-in support for obsolete security algorithms (e.g., diffie-hellman-group1-sha1, ssh-rsa) to enable connections with legacy networking equipment.
 - **Extended Legacy SSH Support**: Expanded the set of supported algorithms to include `arcfour`, `blowfish-cbc`, `cast128-cbc`, and `hmac-md5` for full compatibility with very old hardware (e.g., Cisco IOS 1.99).
 - **Smart SSH Error Parsing**: Implemented backend logic to extract server-offered algorithms from "no common algorithm" errors and provide transparent, dynamic feedback in the security warning modal.
@@ -62,6 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Conditional Host Form**: The Credential Profile section now automatically hides for non-SSH protocols (Telnet).
 - **Context Menu Aesthetics**: Refined layout with better spacing, separators, and animations for a more professional feel.
 - **Session List Visibility**: The "Active Connections" sidebar now strictly filters for successfully established sessions, preventing "phantom" or failed connection attempts from cluttering the UI.
+- **Workspace Aesthetics**: Updated tab background colors and refined mosaic splitter design with hover effects and improved contrast for inactive states.
+- **Tab Lifecycle Management**: Enhanced tab registry logic to use group-aware keys, ensuring component state preservation during drag-and-drop.
 
 ### Fixed
 
@@ -89,6 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Log Filename Timestamp Parsing**: `GetSessionLogs` now calls `time.ParseInLocation(..., time.Local)` so session timestamps derived from filenames reflect the machine's local timezone instead of UTC.
 - **Integrated Settings Access**: Connected the sidebar gear icon to the Preferences modal, enabling direct access to application settings via a new event-driven communication (app:open-preferences).
 - **Streamlined UI**: Hidden the "Terminal / Console" bottom panel to maximize vertical workspace, with the capability to restore it via layout configuration if needed.
+- **Drag and Drop Stability**: Fixed critical rendering issues where moving tabs between groups resulted in empty containers; implemented deterministic rendering keys for EditorGroup components.
+- **Mosaic Layout Persistence**: Resolved edge cases where empty groups remained in the layout registry after all tabs were closed or moved.
+- **Event Interference**: Fixed a bug where Wails global events (like terminal connection updates) were incorrectly captured by all open windows/tabs; implemented unique instance filtering.
 
 ### Removed
 

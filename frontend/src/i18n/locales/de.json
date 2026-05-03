@@ -54,6 +54,10 @@
     "ready": "Bereit",
     "reload": "Neu laden",
     "sourceControl": "Quellcodeverwaltung",
+    "exportTxt": "TXT",
+    "exportHtml": "HTML",
+    "exportAsTxtTitle": "Als Klartext exportieren",
+    "exportAsHtmlTitle": "Als HTML exportieren (mit Farben)",
 
 
     "creditsTitle": "Credits - RadiantCL1",
@@ -136,5 +140,9 @@
     "lucideDesc": "Schöne & konsistente Symbole",
     "tailwindDesc": "Utility-first-Styling",
     "allRightsReserved": "Alle Rechte vorbehalten."
+  },
+  "terminal": {
+    "connectionInterrupted": "[!] Verbindung unterbrochen. Drücken Sie (R) zum Wiederverbinden oder (Q) zum Beenden.",
+    "reconnectSession": "SITZUNG WIEDERHERSTELLEN"
   }
 }

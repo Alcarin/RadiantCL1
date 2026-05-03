@@ -54,6 +54,10 @@
     "ready": "Listo",
     "reload": "Recargar",
     "sourceControl": "Control de Código",
+    "exportTxt": "TXT",
+    "exportHtml": "HTML",
+    "exportAsTxtTitle": "Exportar como texto plano",
+    "exportAsHtmlTitle": "Exportar como HTML (con colores)",
 
     "creditsTitle": "Créditos - RadiantCL1",
     "appDescription": "Terminal Cisco & Explorador de Configuración Profesional",
@@ -144,5 +148,9 @@
     "lucideDesc": "Iconos hermosos y consistentes",
     "tailwindDesc": "Estilos basados en utilidades",
     "allRightsReserved": "Todos los derechos reservados."
+  },
+  "terminal": {
+    "connectionInterrupted": "[!] Conexión interrumpida. Presiona (R) para reconectar o (Q) para salir.",
+    "reconnectSession": "RECONECTAR SESIÓN"
   }
 }

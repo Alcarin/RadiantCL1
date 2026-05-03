@@ -457,6 +457,13 @@ func (a *App) MarkTerminalReady(sessionID string) {
 	a.terminalService.MarkReady(sessionID)
 }
 
+// ReplayTerminalLog richiede il ricaricamento dello storico per una sessione
+func (a *App) ReplayTerminalLog(sessionID, hostLabel, fileName string) (string, error) {
+	return a.terminalService.ReplayTerminalLog(sessionID, hostLabel, fileName)
+}
+
+
+
 // GetSetting recupera una preferenza dell'utente
 func (a *App) GetSetting(key string) (string, error) {
 	if a.dbManager == nil {
@@ -471,6 +478,16 @@ func (a *App) SaveSetting(key string, value string) error {
 		return fmt.Errorf("database not initialized")
 	}
 	return a.dbManager.SaveSetting(key, value)
+}
+
+// SaveAppState salva lo stato completo dell'interfaccia (layout, tab, etc)
+func (a *App) SaveAppState(stateJSON string) error {
+	return a.SaveSetting("app_state", stateJSON)
+}
+
+// GetAppState recupera lo stato salvato dell'interfaccia
+func (a *App) GetAppState() (string, error) {
+	return a.GetSetting("app_state")
 }
 
 // OS INTEGRATION - PROTOCOL HANDLERS
@@ -644,4 +661,16 @@ func (a *App) GetLogContentAtRevision(revision, hostName, filename string) (stri
 // PreloadLogFrames scarica il file e lo divide in delta cronologici
 func (a *App) PreloadLogFrames(hostName, filename string) ([]protocols.LogFrame, error) {
 	return a.jj.PreloadLogFrames(hostName, filename)
+}
+// GetHost recupera i dettagli di un host tramite ID
+func (a *App) GetHost(id int64) (*db.Host, error) {
+	if a.dbManager == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return a.dbManager.GetHostById(id)
+}
+
+// IsSessionAlive verifica se una sessione è attiva nel backend
+func (a *App) IsSessionAlive(id string) bool {
+	return a.terminalService.IsSessionAlive(id)
 }

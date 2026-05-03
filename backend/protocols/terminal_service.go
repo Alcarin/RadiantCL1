@@ -328,9 +328,13 @@ func (s *TerminalService) ConnectSSH(id string, hostID int64, name string, icon 
 		ts.mu.Unlock()
 
 		// Setup logging
-		s.setupLogging(ts)
+		logFile := s.setupLogging(ts)
 
-		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "ready"})
+		s.emit("terminal:progress", map[string]interface{}{
+			"id": id, 
+			"step": "ready",
+			"logFile": logFile,
+		})
 		s.emit("terminal:sessions-updated")
 
 		// Avvia i loop di lettura
@@ -390,9 +394,13 @@ func (s *TerminalService) ConnectTelnet(id string, hostID int64, name string, ic
 		ts.Status = "connected"
 
 		// Setup logging
-		s.setupLogging(ts)
+		logFile := s.setupLogging(ts)
 
-		s.emit("terminal:progress", map[string]interface{}{"id": id, "step": "ready"})
+		s.emit("terminal:progress", map[string]interface{}{
+			"id": id, 
+			"step": "ready",
+			"logFile": logFile,
+		})
 		s.emit("terminal:sessions-updated")
 
 		go s.telnetReadLoop(ts)
@@ -561,8 +569,8 @@ func (s *TerminalService) SendData(id string, data string) error {
 	ts, ok := s.sessions[id]
 	s.mu.RUnlock()
 
-	if !ok {
-		return fmt.Errorf("session %s not found", id)
+	if !ok || ts.Status != "connected" || ts.Writer == nil {
+		return fmt.Errorf("session %s is disconnected or not found", id)
 	}
 
 	s.logData(ts, "RadiantCL1 -> "+ts.Name, []byte(data))
@@ -577,6 +585,10 @@ func (s *TerminalService) ResizeTerminal(id string, cols, rows int) error {
 
 	if !ok {
 		return fmt.Errorf("session %s not found", id)
+	}
+
+	if ts.Status != "connected" {
+		return nil // Ignore resize for disconnected sessions
 	}
 
 	if ts.Type == "ssh" && ts.SSHSession != nil {
@@ -620,6 +632,13 @@ func (s *TerminalService) RemoveSession(id string) {
 	}
 
 	s.emit("terminal:sessions-updated")
+}
+
+func (s *TerminalService) IsSessionAlive(id string) bool {
+	s.mu.RLock()
+	ts, ok := s.sessions[id]
+	s.mu.RUnlock()
+	return ok && ts.Status == "connected"
 }
 
 func (s *TerminalService) CloseSession(id string) {
@@ -710,20 +729,21 @@ func (s *TerminalService) MarkReady(id string) {
 }
 
 // setupLogging inizializza il file di log per una sessione
-func (s *TerminalService) setupLogging(ts *TerminalSession) {
+func (s *TerminalService) setupLogging(ts *TerminalSession) string {
 	logDir, err := db.GetLogDir(ts.Name)
 	if err != nil {
 		s.logError("Failed to get log dir for %s: %v", ts.Name, err)
-		return
+		return ""
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
-	logPath := filepath.Join(logDir, fmt.Sprintf("session_%s.log", timestamp))
+	fileName := fmt.Sprintf("session_%s.log", timestamp)
+	logPath := filepath.Join(logDir, fileName)
 
 	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		s.logError("Failed to open log file %s: %v", logPath, err)
-		return
+		return ""
 	}
 
 	ts.logger = f
@@ -734,6 +754,8 @@ func (s *TerminalService) setupLogging(ts *TerminalSession) {
 			s.logError("Failed to init jj repo: %v", err)
 		}
 	}()
+
+	return fileName
 }
 
 // logData scrive i dati sul file di log e gestisce il trigger dei commit jj
@@ -742,20 +764,13 @@ func (s *TerminalService) logData(ts *TerminalSession, direction string, data []
 		return
 	}
 
-	// Pulisci i codici ANSI per il log su disco per renderlo leggibile
-	cleanData := stripANSI(data)
-	if len(cleanData) == 0 {
-		return // Se erano solo codici di controllo (colori, ecc), non scriviamo nulla
-	}
-
-	// NUOVA LOGICA: Per evitare il raddoppio dei caratteri (echo), scriviamo sul file 
-	// fisico di log solo i dati provenienti dall'Host verso RadiantCL1.
-	// Poiché il server esegue l'echo di ciò che digitiamo, avremo comunque il transcript completo.
+	// NUOVA LOGICA (Fase 2): Salviamo i dati RAW ANSI.
+	// Pulisce solo gli echo se necessario (ma qui scriviamo tutto quello che arriva dall'host).
 	isOutgoing := strings.HasPrefix(direction, "RadiantCL1")
 	
 	if !isOutgoing {
-		// Scrivi sul file fisico solo se è un dato ricevuto (include echo)
-		_, _ = ts.logger.Write(cleanData)
+		// Scrivi sul file fisico solo se è un dato ricevuto (include echo dal server)
+		_, _ = ts.logger.Write(data)
 		
 		ts.mu.Lock()
 		ts.dirty = true
@@ -783,4 +798,35 @@ func (s *TerminalService) logData(ts *TerminalSession, direction string, data []
 			s.jj.Commit(ts.ID, ts.Name, dir)
 		}
 	})
+}
+
+// ReplayTerminalLog legge il file di log di una sessione e restituisce il contenuto
+func (s *TerminalService) ReplayTerminalLog(sessionID string, hostLabel string, fileName string) (string, error) {
+	logDir, err := db.GetLogDir(hostLabel)
+	if err != nil {
+		fmt.Printf("[TerminalService] Replay Error (logDir): %v for host %s\n", err, hostLabel)
+		return "", err
+	}
+
+	if fileName == "" {
+		return "", fmt.Errorf("fileName is required for replay")
+	}
+
+	logPath := filepath.Join(logDir, fileName)
+	fmt.Printf("[TerminalService] Replaying log from: %s\n", logPath)
+	
+	// Se il file non esiste, non facciamo nulla (restituiamo stringa vuota)
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		fmt.Printf("[TerminalService] Log file not found: %s\n", logPath)
+		return "", nil
+	}
+
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		fmt.Printf("[TerminalService] Read Error: %v\n", err)
+		return "", fmt.Errorf("failed to read log file: %w", err)
+	}
+
+	fmt.Printf("[TerminalService] Replay success: read %d bytes\n", len(content))
+	return string(content), nil
 }

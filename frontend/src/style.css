@@ -13,7 +13,7 @@
   --color-rd-activitybar:     #333333;
   --color-rd-titlebar:        #3c3c3c;
   --color-rd-tab-active:      #1e1e1e;
-  --color-rd-tab-inactive:    #2d2d2d;
+  --color-rd-tab-inactive:    #252526;
   --color-rd-statusbar:       #facc15;
   --color-rd-statusbar-fg:    oklch(from var(--color-rd-statusbar) clamp(0, (l - 0.5) * -100, 1) 0 0);
   --color-rd-statusbar-off:   #3c3c3c;
@@ -176,15 +176,19 @@
   }
 
   .mosaic-split {
-    z-index: 2;
+    z-index: 5 !important;
+    background: var(--color-rd-border) !important;
+    transition: background-color 0.2s ease;
   }
 
+  .mosaic-split:hover {
+    background: var(--color-rd-accent) !important;
+  }
+
+  /* Rimuoviamo la linea interna superflua per un look più pulito, 
+     usando l'intero divisore come linea di separazione visibile */
   .mosaic-split .mosaic-split-line {
-    background: var(--color-rd-border-subtle) !important;
-  }
-
-  .mosaic-split:hover .mosaic-split-line {
-    background: var(--color-rd-sash) !important;
+    display: none !important;
   }
 
   /* Eliminazione bordi e artefatti di react-mosaic */
@@ -264,4 +268,32 @@
     background: rgba(253, 224, 71, 0.04) !important;
     border-top: 1px solid rgba(253, 224, 71, 0.15) !important;
   }
+
+  /* ── Custom Animations ── */
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+
+
+/* Terminal Inline Widgets */
+
+/* Zombie widget container legacy styles removed */
+
+.inline-reconnect-btn:active {
+  transform: translateY(0);
 }

@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
-import { OpenConfig } from '../wailsjs/go/main/App';
+import { OpenConfig, SaveAppState, GetAppState, GetHost } from '../wailsjs/go/main/App';
 import { main, db } from '../wailsjs/go/models';
 import { ASTNodeView } from './components/ASTNodeView';
 
@@ -9,12 +9,12 @@ import { ActivityBar } from './components/layout/ActivityBar';
 import { SideBar } from './components/layout/SideBar';
 import { StatusBar } from './components/layout/StatusBar';
 import { MenuBar } from './components/layout/MenuBar';
-import { EditorMosaic, MosaicId } from './components/layout/EditorMosaic';
+import { EditorMosaic, MosaicId, LayoutNode } from './components/layout/EditorMosaic';
 import { EditorGroup } from './components/layout/EditorGroup';
 import { TreeView, TreeNode } from './components/ui/TreeView';
 import { Icon, IconName } from './components/ui/Icon';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { MosaicNode } from 'react-mosaic-component';
+import { terminalManager } from './lib/terminalManager';
 import { ConnectionsView } from './components/layout/ConnectionsView';
 import { HistoryView } from './components/layout/HistoryView';
 import { SideBarSection } from './components/layout/SideBarSection';
@@ -24,6 +24,24 @@ import { MultiBackend } from 'react-dnd-multi-backend';
 import { HTML5toTouch } from 'rdndmb-html5-to-touch';
 import { useTranslation } from 'react-i18next';
 import { SettingsService } from './lib/settings_service';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverEvent,
+  defaultDropAnimationSideEffects,
+  DropAnimation,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
 
 // Interface for all open components in tabs
 interface OpenTab {
@@ -37,11 +55,11 @@ interface OpenTab {
   ast?: any; // For cisco config AST
   logHost?: string; // For log-viewer
   logFilename?: string; // For log-viewer
+  logFile?: string; // For terminal logging
 }
 
 
 import { EventsEmit, EventsOn, EventsOff, LogError } from '../wailsjs/runtime/runtime';
-import { useEffect } from 'react';
 import { CloseTerminal, GetHostWithCredentials, AbortConnection, UpdateHostAllowDeprecated } from '../wailsjs/go/main/App';
 import { ProtocolConnectModal, ProtocolRequestData } from './components/layout/modals/ProtocolConnectModal';
 import { ConnectionLogModal } from './components/layout/modals/ConnectionLogModal';
@@ -49,13 +67,141 @@ import { useTerminalConnection } from './hooks/useTerminalConnection';
 
 function App() {
   // State
-  const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
-  const [activeSideBar, setActiveSideBar] = useLocalStorage<'connections' | 'explorer' | 'ast' | 'history'>('activeSideBar', 'connections');
+  const [tabRegistry, setTabRegistry] = useState<Record<string, OpenTab>>({});
+  const [editorGroups, setEditorGroups] = useState<Record<string, string[]>>({ 'main-group': [] });
+  const [activeSideBar, setActiveSideBar] = useState<'connections' | 'explorer' | 'ast' | 'history'>('connections');
 
-  const [mosaicLayout, setMosaicLayout] = useLocalStorage<MosaicNode<MosaicId> | null>('mosaicLayout', 'main-group');
+  const [mosaicLayout, setMosaicLayout] = useState<LayoutNode | null>('main-group');
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
   const [sideBarVisible, setSideBarVisible] = useState(true);
+  const [isAppLoaded, setIsAppLoaded] = useState(false);
+
+  // Guard: se il layout salvato è in formato non valido, resettiamo
+  // v6 usa {direction, first, second} oppure stringa
+  useEffect(() => {
+    const isValid = (n: any): boolean => {
+      if (n === null || typeof n === 'string') return true;
+      if (typeof n === 'object' && n !== null) {
+        // Formato v6: deve avere direction, first, second
+        if ('direction' in n && 'first' in n && 'second' in n) {
+          return isValid(n.first) && isValid(n.second);
+        }
+      }
+      return false;
+    };
+    if (!isValid(mosaicLayout)) {
+      console.warn('[RadiantCL1] Layout Mosaic non valido in localStorage, reset a main-group.');
+      setMosaicLayout('main-group');
+      setEditorGroups({ 'main-group': [] });
+      setActiveTabPerGroup({ 'main-group': '' });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Caricamento iniziale dello stato dal Backend (SQLite)
+  useEffect(() => {
+    const loadState = async () => {
+      try {
+        const stateJSON = await GetAppState();
+        if (stateJSON) {
+          const state = JSON.parse(stateJSON);
+          if (state.tabRegistry) setTabRegistry(state.tabRegistry);
+          if (state.editorGroups) setEditorGroups(state.editorGroups);
+          if (state.activeSideBar) setActiveSideBar(state.activeSideBar || 'connections');
+          if (state.mosaicLayout) setMosaicLayout(state.mosaicLayout);
+          if (state.activeTabPerGroup) setActiveTabPerGroup(state.activeTabPerGroup);
+        }
+      } catch (err) {
+        console.error("[RadiantCL1] Errore nel caricamento dello stato:", err);
+      } finally {
+        // Un piccolo ritardo per rendere il caricamento più piacevole
+        setTimeout(() => setIsAppLoaded(true), 600);
+      }
+    };
+    loadState();
+  }, []);
+
+  // Salvataggio automatico dello stato (debounced)
+  useEffect(() => {
+    if (!isAppLoaded) return;
+
+    const timer = setTimeout(() => {
+      const state = {
+        tabRegistry,
+        editorGroups,
+        activeSideBar,
+        mosaicLayout,
+        activeTabPerGroup
+      };
+      SaveAppState(JSON.stringify(state)).catch(err => {
+        console.error("[RadiantCL1] Errore nel salvataggio dello stato:", err);
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [tabRegistry, editorGroups, activeSideBar, mosaicLayout, activeTabPerGroup, isAppLoaded]);
+
+  // Reidratazione sessioni attive (rimane per garantire che le sessioni Go siano allineate)
+  useEffect(() => {
+    if (!isAppLoaded) return;
+    
+    const syncActiveSessions = async () => {
+      try {
+        const { GetActiveConnections } = await import('../wailsjs/go/main/App');
+        const sessions = await GetActiveConnections();
+        if (!sessions || sessions.length === 0) return;
+
+        // Qui potremmo fare logica di sync se necessario, ma per ora 
+        // confidiamo che la tabRegistry caricata dal DB sia corretta.
+        // Se una sessione non è attiva, verrà gestita in Fase 4 come Zombie.
+      } catch (err) {
+        console.debug('[RadiantCL1] Active session sync skipped:', err);
+      }
+    };
+    syncActiveSessions();
+  }, [isAppLoaded]);
+  
+  // ─── Sentinel del Layout: Auto-distruzione dei gruppi vuoti ────────────────
+  useEffect(() => {
+    const cleanupLayout = (node: LayoutNode | null): LayoutNode | null => {
+      if (node === null) return null;
+      if (typeof node === 'string') {
+        // Un gruppo è valido solo se esiste nel registry e ha almeno una tab
+        // ECCEZIONE: il main-group è il nostro fallback root
+        const hasTabs = editorGroups[node] && editorGroups[node].length > 0;
+        return (hasTabs || node === 'main-group') ? node : null;
+      }
+      const first = cleanupLayout(node.first as LayoutNode);
+      const second = cleanupLayout(node.second as LayoutNode);
+      
+      if (first === null && second === null) return null;
+      if (first === null) return second;
+      if (second === null) return first;
+      
+      return { ...node, first, second };
+    };
+
+    const nextLayout = cleanupLayout(mosaicLayout as LayoutNode) || 'main-group';
+    // Usiamo il confronto JSON per evitare loop infiniti di render
+    if (JSON.stringify(nextLayout) !== JSON.stringify(mosaicLayout)) {
+      setMosaicLayout(nextLayout);
+    }
+  }, [editorGroups, mosaicLayout]);
+
   const { t, i18n } = useTranslation();
+
+  // DND Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Protocol Request State
   const [protocolRequest, setProtocolRequest] = useState<{
@@ -81,30 +227,38 @@ function App() {
     loadLang();
   }, [i18n]);
 
-  const handleOpenTerminal = (data: { sessionId: string, name: string, hostId: number, icon: IconName }) => {
+  const handleOpenTerminal = useCallback((data: { sessionId: string, name: string, hostId: number, icon: IconName, logFile?: string }) => {
     const tabId = `term-${data.sessionId}`;
     
-    setOpenTabs(prev => {
-      // Evita di riaprire lo stesso terminale se già aperto (opzionale)
-      const alreadyOpen = prev.find(t => t.sessionId === data.sessionId);
-      if (alreadyOpen) {
-        setActiveTabPerGroup(pg => ({ ...pg, 'main-group': alreadyOpen.id }));
-        return prev;
-      }
+    // Check if already open anywhere
+    if (tabRegistry[tabId]) {
+      // Find which group has it
+      const groupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(tabId)) || 'main-group';
+      setActiveTabPerGroup(pg => ({ ...pg, [groupId]: tabId }));
+      return;
+    }
 
-      const newTab: OpenTab = {
-        id: tabId,
-        name: data.name,
-        type: 'terminal',
-        sessionId: data.sessionId,
-        hostId: data.hostId,
-        icon: data.icon
-      };
-      return [...prev, newTab];
+    const newTab: OpenTab = {
+      id: tabId,
+      name: data.name,
+      type: 'terminal',
+      sessionId: data.sessionId,
+      hostId: data.hostId,
+      icon: data.icon,
+      logFile: data.logFile,
+      logHost: data.name
+    };
+
+    setTabRegistry(prev => ({ ...prev, [tabId]: newTab }));
+    setEditorGroups(prev => {
+      const mainTabs = prev['main-group'] || [];
+      if (mainTabs.includes(tabId)) return prev;
+      return { ...prev, 'main-group': [...mainTabs, tabId] };
     });
     
     setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
-  };
+  }, [tabRegistry, editorGroups]);
+
 
   // Connection Hook
   const { 
@@ -122,19 +276,57 @@ function App() {
     retryConnection(true);
   };
 
+  const handleReconnectTerminal = useCallback(async (tabId: string) => {
+    const tab = tabRegistry[tabId];
+    if (!tab || tab.type !== 'terminal' || !tab.hostId) {
+      console.warn(`[App] Cannot reconnect tab ${tabId}: missing hostId or not a terminal`);
+      return;
+    }
+
+    try {
+      const host = await GetHost(tab.hostId);
+      if (!host) {
+        console.error(`[App] Host ${tab.hostId} not found in DB`);
+        return;
+      }
+
+      // Avviamo la connessione usando lo stesso sessionId della scheda
+      // Questo permetterà di riagganciarsi all'istanza xterm esistente
+      startConnection(
+        host.id, 
+        host.label, 
+        host.icon as IconName, 
+        host.address, 
+        host.port, 
+        host.type, 
+        '', // Username/Password verranno chiesti se non salvati
+        '', 
+        host.allowDeprecated,
+        tab.sessionId
+      );
+    } catch (err) {
+      console.error(`[App] Reconnect failed:`, err);
+    }
+  }, [tabRegistry, startConnection]);
+
   // Listen for terminal open events
   useEffect(() => {
     const handleHostUpdated = (updatedHost: db.Host) => {
-      setOpenTabs(prev => prev.map(tab => {
-        if (tab.hostId === updatedHost.id) {
-          return {
-            ...tab,
-            name: updatedHost.label,
-            icon: updatedHost.icon as IconName
-          };
-        }
-        return tab;
-      }));
+      setTabRegistry(prev => {
+        const newReg = { ...prev };
+        let changed = false;
+        Object.keys(newReg).forEach(id => {
+          if (newReg[id].hostId === updatedHost.id) {
+            newReg[id] = {
+              ...newReg[id],
+              name: updatedHost.label,
+              icon: updatedHost.icon as IconName
+            };
+            changed = true;
+          }
+        });
+        return changed ? newReg : prev;
+      });
     };
 
     const handleProtocolRequest = async (parts: ProtocolRequestData) => {
@@ -196,7 +388,7 @@ function App() {
 
     const handleOpenLog = (data: { host: string, filename: string, content: string, timestamp: string }) => {
       const tabId = `log-${data.host}-${data.filename}`;
-      // Locale sistema (undefined), formato data + ora completa, 24h
+      
       const dateLabel = data.timestamp
         ? new Date(data.timestamp).toLocaleString(undefined, {
             year: 'numeric', month: '2-digit', day: '2-digit',
@@ -205,24 +397,27 @@ function App() {
         : data.filename;
       const name = `${data.host} ${dateLabel}`;
       
-      setOpenTabs(prev => {
-        const alreadyOpen = prev.find(t => t.id === tabId);
-        if (alreadyOpen) {
-          setActiveTabPerGroup(pg => ({ ...pg, 'main-group': tabId }));
-          return prev;
-        }
+      const newTab: OpenTab = {
+        id: tabId,
+        name: name,
+        type: 'log-viewer',
+        content: data.content,
+        logHost: data.host,
+        logFilename: data.filename,
+        icon: 'clock'
+      };
 
-        const newTab: OpenTab = {
-          id: tabId,
-          name: name,
-          type: 'log-viewer',
-          content: data.content,
-          logHost: data.host,
-          logFilename: data.filename,
-          icon: 'clock'
-        };
-        return [...prev, newTab];
+      setTabRegistry(prev => {
+        if (prev[tabId]) return prev;
+        return { ...prev, [tabId]: newTab };
       });
+
+      setEditorGroups(prev => {
+        const mainTabs = prev['main-group'] || [];
+        if (mainTabs.includes(tabId)) return prev;
+        return { ...prev, 'main-group': [...mainTabs, tabId] };
+      });
+
       setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
     };
 
@@ -241,6 +436,7 @@ function App() {
     
     EventsOff('app:connect');
     const offConnect = EventsOn('app:connect', (data: { 
+      senderId: string,
       hostId: number, 
       name: string, 
       icon: IconName, 
@@ -250,8 +446,11 @@ function App() {
       user?: string, 
       pass?: string 
     }) => {
+      // Filtra gli eventi: processa solo quelli scatenati da questa specifica istanza
+      if (data.senderId !== (window as any).__radiant_instance_id) return;
+
       const now = Date.now();
-      if (now - lastConnectTime < 100) return; // Debounce 100ms
+      if (now - lastConnectTime < 1000) return; // Debounce 1s per evitare trigger multipli da click rapidi
       lastConnectTime = now;
 
       startConnection(
@@ -278,11 +477,11 @@ function App() {
   // Monitor active tab changes to notify sidebar
   useEffect(() => {
     const activeId = activeTabPerGroup['main-group'];
-    const activeTab = openTabs.find(t => t.id === activeId);
+    const activeTab = tabRegistry[activeId];
     if (activeId) {
       EventsEmit('app:tab-changed', activeTab);
     }
-  }, [activeTabPerGroup, openTabs]);
+  }, [activeTabPerGroup, tabRegistry]);
 
 
   // Handlers
@@ -296,43 +495,238 @@ function App() {
       }
       
       const tabId = `file-${Date.now()}`;
-      setOpenTabs(prev => [...prev, { 
+      const newTab: OpenTab = { 
         id: tabId, 
         name: res.name || t('common.document') || 'document', 
         type: 'editor', 
         content: res.content,
         ast: res.ast
-      }]);
+      };
+
+      setTabRegistry(prev => ({ ...prev, [tabId]: newTab }));
+      setEditorGroups(prev => {
+        const mainTabs = prev['main-group'] || [];
+        return { ...prev, 'main-group': [...mainTabs, tabId] };
+      });
       setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
     } catch (err) {
       console.error("Error: " + err);
     }
   };
 
-  const closeTab = (id: string) => {
-    const tabToRemove = openTabs.find(t => t.id === id);
-    if (tabToRemove && tabToRemove.type === 'terminal' && tabToRemove.sessionId) {
+  const closeTab = (id: string, groupId: string = 'main-group') => {
+    const tabToRemove = tabRegistry[id];
+    if (!tabToRemove) return;
+
+    if (tabToRemove.type === 'terminal' && tabToRemove.sessionId) {
       CloseTerminal(tabToRemove.sessionId).catch(err => {
         console.error("Failed to close terminal session:", err);
       });
+      terminalManager.removeInstance(tabToRemove.sessionId);
     }
-    setOpenTabs(prev => prev.filter(t => t.id !== id));
+
+    // Smart selection logic
+    const groupTabs = editorGroups[groupId] || [];
+    const index = groupTabs.indexOf(id);
+    if (activeTabPerGroup[groupId] === id && groupTabs.length > 1) {
+      const nextId = index > 0 ? groupTabs[index - 1] : groupTabs[index + 1];
+      setActiveTabPerGroup(prev => ({ ...prev, [groupId]: nextId }));
+    }
+
+    // Update group
+    setEditorGroups(prev => {
+      const newGroupTabs = (prev[groupId] || []).filter(tid => tid !== id);
+      const newGroups = { ...prev, [groupId]: newGroupTabs };
+      
+      // Pulizia dei gruppi vuoti dal layout Mosaic
+      const cleanupLayout = (node: LayoutNode | null): LayoutNode | null => {
+        if (node === null) return null;
+        if (typeof node === 'string') {
+          // Se il nodo è un ID di gruppo, verifica se ha ancora tab (o se è l'ultimo rimasto)
+          const hasTabs = newGroups[node] && newGroups[node].length > 0;
+          return hasTabs ? node : null;
+        }
+        const first = cleanupLayout(node.first as LayoutNode);
+        const second = cleanupLayout(node.second as LayoutNode);
+        
+        if (first === null && second === null) return null;
+        if (first === null) return second;
+        if (second === null) return first;
+        
+        return { ...node, first, second };
+      };
+
+      const nextLayout = cleanupLayout(mosaicLayout as LayoutNode) || 'main-group';
+      if (JSON.stringify(nextLayout) !== JSON.stringify(mosaicLayout)) {
+        setMosaicLayout(nextLayout);
+      }
+
+      // Check if tab is anywhere else
+      const isStillOpen = Object.values(newGroups).some(tabs => tabs.includes(id));
+      if (!isStillOpen) {
+        setTabRegistry(reg => {
+          const newReg = { ...reg };
+          delete newReg[id];
+          return newReg;
+        });
+      }
+      return newGroups;
+    });
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragId(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Logic for internal reorder or move between groups
+    // overId can be a tab ID or a drop zone ID (split-top-groupId, etc)
+    
+    if (overId.startsWith('split-')) {
+      const parts = overId.split('-');
+      const direction = parts[1];
+      const targetGroupId = parts.slice(2).join('-');
+      handleTabSplit(activeId, targetGroupId, direction as any);
+      return;
+    }
+
+    if (overId.toString().startsWith('group-')) {
+      const targetGroupId = overId.toString().replace('group-', '');
+      const activeGroupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(activeId));
+      
+      if (!activeGroupId || activeGroupId === targetGroupId) return;
+
+      setEditorGroups(prev => {
+        const newGroups = { ...prev };
+        newGroups[activeGroupId] = prev[activeGroupId].filter(id => id !== activeId);
+        newGroups[targetGroupId] = [...(prev[targetGroupId] || []), activeId];
+        return newGroups;
+      });
+      setActiveTabPerGroup(prev => ({ ...prev, [targetGroupId]: activeId }));
+      return;
+    }
+
+    // Find groups for active and over
+    const activeGroupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(activeId));
+    const overGroupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(overId));
+
+    if (!activeGroupId || !overGroupId) return;
+
+    if (activeGroupId === overGroupId) {
+      // Reorder within group
+      const oldIndex = editorGroups[activeGroupId].indexOf(activeId);
+      const newIndex = editorGroups[activeGroupId].indexOf(overId);
+      if (oldIndex !== newIndex) {
+        setEditorGroups(prev => ({
+          ...prev,
+          [activeGroupId]: arrayMove(prev[activeGroupId], oldIndex, newIndex)
+        }));
+      }
+    } else {
+      // Move between groups
+      setEditorGroups(prev => {
+        const newActiveGroup = prev[activeGroupId].filter(id => id !== activeId);
+        const overIndex = prev[overGroupId].indexOf(overId);
+        const newOverGroup = [...prev[overGroupId]];
+        newOverGroup.splice(overIndex, 0, activeId);
+        
+        const newGroups = {
+          ...prev,
+          [activeGroupId]: newActiveGroup,
+          [overGroupId]: newOverGroup
+        };
+
+        // Se il gruppo di origine è diventato vuoto, rimuoviamolo dal layout Mosaic
+        if (newActiveGroup.length === 0 && activeGroupId !== 'main-group') {
+          const removeNode = (node: LayoutNode | null): LayoutNode | null => {
+            if (node === null || typeof node === 'string') return node === activeGroupId ? null : node;
+            const first = removeNode(node.first as LayoutNode);
+            const second = removeNode(node.second as LayoutNode);
+            if (first === null) return second;
+            if (second === null) return first;
+            return { ...node, first, second };
+          };
+          setMosaicLayout(prev => removeNode(prev as LayoutNode));
+        }
+
+        return newGroups;
+      });
+      setActiveTabPerGroup(prev => ({ ...prev, [overGroupId]: activeId }));
+    }
+  };
+
+  const handleTabSplit = (tabId: string, targetGroupId: string, direction: 'top' | 'bottom' | 'left' | 'right') => {
+    const newGroupId = `group-${Date.now()}`;
+    
+    // 1. Aggiorna layout Mosaic v6 (format: {direction, first, second})
+    const splitNode = (node: LayoutNode | null): LayoutNode => {
+      if (node === null) return newGroupId;
+      if (typeof node === 'string') {
+        if (node === targetGroupId) {
+          const isVertical = direction === 'top' || direction === 'bottom';
+          const a = direction === 'top' || direction === 'left' ? newGroupId : targetGroupId;
+          const b = direction === 'top' || direction === 'left' ? targetGroupId : newGroupId;
+          return {
+            direction: isVertical ? 'column' : 'row',
+            first: a,
+            second: b,
+            splitPercentage: 50,
+          } as LayoutNode;
+        }
+        return node;
+      }
+      return {
+        ...node,
+        first: splitNode(node.first as LayoutNode),
+        second: splitNode(node.second as LayoutNode),
+      } as LayoutNode;
+    };
+
+    setMosaicLayout(prev => splitNode(prev as LayoutNode));
+
+    // 2. Move tab to the new group
+    setEditorGroups(prev => {
+      const sourceGroupId = Object.keys(prev).find(gid => prev[gid].includes(tabId));
+      const newGroups = { ...prev };
+      
+      if (sourceGroupId) {
+        newGroups[sourceGroupId] = prev[sourceGroupId].filter(id => id !== tabId);
+        
+        // Handle active tab in source group if needed
+        if (activeTabPerGroup[sourceGroupId] === tabId && newGroups[sourceGroupId].length > 0) {
+          setActiveTabPerGroup(pg => ({ ...pg, [sourceGroupId]: newGroups[sourceGroupId][0] }));
+        }
+      }
+      newGroups[newGroupId] = [tabId];
+      return newGroups;
+    });
+
+    // 3. Set active tab for the new group
+    setActiveTabPerGroup(prev => ({ ...prev, [newGroupId]: tabId }));
   };
 
   // Memoized Views
   const explorerNodes = useMemo<TreeNode[]>(() => {
-    return openTabs
+    return Object.values(tabRegistry)
       .filter(t => t.type === 'editor')
       .map(t => ({
         id: t.id,
         label: t.name,
         icon: 'file' as const,
       }));
-  }, [openTabs]);
+  }, [tabRegistry]);
 
   const activeTabInGroup = (groupId: string) => {
     const activeId = activeTabPerGroup[groupId];
-    return openTabs.find(t => t.id === activeId);
+    return tabRegistry[activeId];
   };
 
   // Shell Components
@@ -368,7 +762,16 @@ function App() {
 
       } 
     >
-      {activeSideBar === 'connections' && <ConnectionsView />}
+      {activeSideBar === 'connections' && (
+        <ConnectionsView 
+          tabRegistry={tabRegistry} 
+          onSelectTerminal={(sessionId) => {
+            const tabId = `term-${sessionId}`;
+            const groupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(tabId)) || 'main-group';
+            setActiveTabPerGroup(prev => ({ ...prev, [groupId]: tabId }));
+          }}
+        />
+      )}
       {activeSideBar === 'history' && <HistoryView />}
       {activeSideBar === 'explorer' && (
 
@@ -399,32 +802,58 @@ function App() {
     </SideBar>
   );
 
+  const renderTile = useCallback((groupId: string) => {
+    const activeTabId = activeTabPerGroup[groupId];
+    const activeTab = tabRegistry[activeTabId];
+    const groupTabIds = editorGroups[groupId] || [];
+    const groupTabs = groupTabIds.map(tid => tabRegistry[tid]).filter(Boolean);
+
+    return (
+      <EditorGroup
+        groupId={groupId}
+        tabs={groupTabs.map(t => ({ 
+          id: t.id, 
+          name: t.name, 
+          type: t.type, 
+          sessionId: t.sessionId,
+          icon: t.icon,
+          logHost: t.logHost,
+          logFilename: t.logFilename,
+          logFile: t.logFile
+        }))}
+        activeTabId={activeTabId || ''}
+        onTabSelect={(id) => setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }))}
+        onTabClose={(id) => closeTab(id, groupId)}
+        onReconnect={handleReconnectTerminal}
+        content={activeTab?.content || ''}
+        language="text"
+        isDragging={!!activeDragId}
+      />
+    );
+  }, [editorGroups, tabRegistry, activeTabPerGroup, activeDragId, closeTab]);
+
   const mainContent = (
-    <EditorMosaic
-      layout={mosaicLayout}
-      onChange={setMosaicLayout}
-      renderTile={(groupId) => {
-        const activeTab = activeTabInGroup(groupId);
-        return (
-          <EditorGroup
-            tabs={openTabs.map(t => ({ 
-              id: t.id, 
-              name: t.name, 
-              type: t.type, 
-              sessionId: t.sessionId,
-              icon: t.icon,
-              logHost: t.logHost,
-              logFilename: t.logFilename
-            }))}
-            activeTabId={activeTabPerGroup[groupId] || ''}
-            onTabSelect={(id) => setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }))}
-            onTabClose={closeTab}
-            content={activeTab?.content || ''}
-            language="text"
-          />
-        );
-      }}
-    />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <EditorMosaic
+        layout={mosaicLayout}
+        onChange={setMosaicLayout}
+        renderTile={renderTile}
+      />
+      
+      <DragOverlay dropAnimation={null}>
+        {activeDragId && tabRegistry[activeDragId] ? (
+          <div className="flex items-center gap-2 px-3 h-[35px] bg-rd-tab-active text-rd-text-active border border-rd-focus-border opacity-80 shadow-xl pointer-events-none rounded-t-sm">
+            <Icon name={tabRegistry[activeDragId].icon || (tabRegistry[activeDragId].type === 'terminal' ? 'terminal' : 'file')} size={14} />
+            <span className="text-[13px] truncate max-w-[150px]">{tabRegistry[activeDragId].name}</span>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 
   return (
@@ -474,6 +903,25 @@ function App() {
         entries={connState.entries}
         isConnecting={connState.isConnecting}
       />
+
+      {/* Premium Loading Overlay */}
+      {!isAppLoaded && (
+        <div className="fixed inset-0 z-[9999] bg-[#0b0e14] flex flex-col items-center justify-center transition-opacity duration-500">
+          <div className="relative w-24 h-24 mb-8">
+            <div className="absolute inset-0 rounded-full border-t-2 border-r-2 border-rd-focus-border animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-b-2 border-l-2 border-blue-500/30 animate-spin-slow"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Icon name="terminal" size={32} className="text-rd-focus-border animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-xl font-light tracking-[0.2em] uppercase text-zinc-300 animate-pulse">
+            Radiant<span className="font-bold text-rd-focus-border">CL1</span>
+          </h2>
+          <div className="mt-4 w-48 h-1 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-transparent via-rd-focus-border to-transparent w-full animate-shimmer"></div>
+          </div>
+        </div>
+      )}
     </DndProvider>
   );
 }

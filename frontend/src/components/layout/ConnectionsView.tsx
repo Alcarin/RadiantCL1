@@ -52,7 +52,12 @@ const ActionButtonProper: React.FC<ActionButtonProps> = ({ icon, title, onClick 
   </button>
 );
 
-export const ConnectionsView: React.FC = () => {
+interface ConnectionsViewProps {
+  tabRegistry?: Record<string, any>;
+  onSelectTerminal?: (sessionId: string) => void;
+}
+
+export const ConnectionsView: React.FC<ConnectionsViewProps> = ({ tabRegistry = {}, onSelectTerminal }) => {
   const { t } = useTranslation();
   const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
   
@@ -186,6 +191,7 @@ export const ConnectionsView: React.FC = () => {
        
        // Emette l'evento che verrà catturato da App.tsx (che usa useTerminalConnection)
        EventsEmit('app:connect', {
+         senderId: (window as any).__radiant_instance_id,
          hostId,
          name: node.label,
          icon: node.icon || 'terminal',
@@ -247,14 +253,39 @@ export const ConnectionsView: React.FC = () => {
 
   // MAPPING: Active Connections to TreeNode
   const mappedActiveConnections = useMemo(() => {
-    return activeConnections.map((c: any) => ({
+    // 1. Mappa delle connessioni attive dal backend (per ID)
+    const activeMap = new Map(activeConnections.map(c => [c.id, c]));
+    
+    // 2. Identifica le tab terminale nel tabRegistry che NON sono nel backend
+    const zombieConnections = Object.values(tabRegistry)
+      .filter(t => t.type === 'terminal' && t.sessionId && !activeMap.has(t.sessionId))
+      .map(t => ({
+        id: t.sessionId,
+        name: t.name,
+        status: 'disconnected',
+        icon: t.icon || 'terminal',
+        isZombie: true
+      }));
+
+    // 3. Uniamo le liste
+    const liveItems = activeConnections.map((c: any) => ({
       id: c.id,
       label: c.name,
       status: c.status,
-      icon: (c.icon || 'network') as IconName,
-      data: { ...c, label: c.name, icon: c.icon || 'network' }
+      icon: (c.icon || 'terminal') as IconName,
+      data: { ...c, label: c.name, icon: c.icon || 'terminal' }
     }));
-  }, [activeConnections]);
+
+    const zombieItems = zombieConnections.map(c => ({
+      id: c.id,
+      label: c.name,
+      status: c.status,
+      icon: c.icon as IconName,
+      data: { ...c, label: c.name }
+    }));
+
+    return [...liveItems, ...zombieItems];
+  }, [activeConnections, tabRegistry]);
 
   const handleMoveActive = ({ dragIds, parentId, index }: { dragIds: string[]; parentId: string | null; index: number }) => {
     // Flat list reordering
@@ -288,14 +319,17 @@ export const ConnectionsView: React.FC = () => {
           actions={<ActionButtonProper icon="plus" title={t('common.connect')} onClick={() => setIsAdHocModalOpen(true)} />}
         >
           <div className="flex flex-col flex-initial overflow-hidden">
-            {activeConnections.length === 0 ? (
+            {mappedActiveConnections.length === 0 ? (
               <div className="px-5 py-2 text-[12px] text-rd-text-dim italic">{t('common.noActiveConnections')}</div>
             ) : (
               <TreeView
                 ref={activeConnectionsTreeRef}
                 nodes={mappedActiveConnections}
                 selectedId={selectedHostId}
-                onSelect={(node) => setSelectedHostId(node.id)}
+                onSelect={(node) => {
+                  setSelectedHostId(node.id);
+                  onSelectTerminal?.(node.id);
+                }}
                 onMove={handleMoveActive}
                 disableDropInto={true}
                 showGuides={false}

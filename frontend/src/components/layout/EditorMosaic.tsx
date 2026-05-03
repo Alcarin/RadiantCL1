@@ -1,18 +1,27 @@
+import React from 'react';
 import {
   MosaicWithoutDragDropContext,
   MosaicWindow,
   MosaicNode,
 } from 'react-mosaic-component';
 import 'react-mosaic-component/react-mosaic-component.css';
-import { Icon } from '../ui/Icon';
 
 export type MosaicId = string;
 
+// Formato stabile v6: { direction, first, second, splitPercentage? }
+export type LayoutNode = MosaicNode<MosaicId>;
+
 interface EditorMosaicProps {
-  layout: MosaicNode<MosaicId> | null;
-  onChange: (newNode: MosaicNode<MosaicId> | null) => void;
+  layout: LayoutNode | null;
+  onChange: (newNode: LayoutNode | null) => void;
   renderTile: (id: MosaicId) => React.ReactElement;
 }
+
+const ZeroState: React.FC = () => (
+  <div className="flex items-center justify-center h-full text-rd-text-dim text-sm italic">
+    Apri una connessione dalla sidebar
+  </div>
+);
 
 export const EditorMosaic: React.FC<EditorMosaicProps> = ({
   layout,
@@ -39,16 +48,3 @@ export const EditorMosaic: React.FC<EditorMosaicProps> = ({
     </div>
   );
 };
-
-/** Stato vuoto — look pulito e professionale */
-const ZeroState: React.FC = () => (
-  <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
-    <Icon name="terminal" size={32} className="text-rd-text-dim opacity-30" />
-    <span className="text-[13px] text-rd-text-dim">
-      Apri un file per iniziare
-    </span>
-    <span className="text-[11px] text-rd-text-disabled">
-      File → Apri configurazione
-    </span>
-  </div>
-);

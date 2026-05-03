@@ -3,6 +3,9 @@ import Editor from '@monaco-editor/react';
 import { PreloadLogFrames } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsEmit } from '../../../wailsjs/runtime/runtime';
 import { playbackStore } from '../../stores/playbackStore';
+import { exportToTxt, exportToHtml } from '../../lib/exportUtils';
+import { Icon } from '../ui/Icon';
+import { useTranslation } from 'react-i18next';
 
 interface LogViewerContentProps {
   content: string;
@@ -17,6 +20,7 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
   host,
   filename
 }) => {
+  const { t } = useTranslation();
   const [displayContent, setDisplayContent] = useState(initialContent);
   const [frames, setFrames] = useState<any[]>([]);
 
@@ -339,41 +343,70 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-rd-base relative">
-      <Editor
-        height="100%"
-        language="text"
-        theme="vs-dark"
-        value={displayContent}
-        onMount={(editor) => {
-          editorRef.current = editor;
-          // Se i frame sono già pronti (preload terminato prima del mount), applica subito
-          if (framesRef.current.length > 0) applyCommitDecorations();
-        }}
-        options={{
-          readOnly: true,
-          glyphMargin: true,
-          minimap: { enabled: true },
-          fontSize: 13,
-          fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
-          wordWrap: 'on',
-          padding: { top: 12, bottom: 12 },
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          renderLineHighlight: 'all',
-          lineHeight: 22,
-          letterSpacing: 0.4,
-          cursorBlinking: 'smooth',
-          smoothScrolling: true,
-          links: true,
-          contextmenu: true,
-          scrollbar: {
-            vertical: 'visible',
-            horizontal: 'auto',
-            useShadows: false,
-            verticalScrollbarSize: 10,
-          }
-        }}
-      />
+      {/* Toolbar Esportazione */}
+      <div className="flex items-center justify-between px-4 py-2 bg-rd-base-alt border-b border-rd-border-subtle shrink-0">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Icon name="fileText" size={16} className="text-rd-text-dim shrink-0" />
+          <span className="text-[12px] text-rd-text-dim truncate font-mono">{filename}</span>
+        </div>
+        
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => exportToTxt(displayContent, filename.replace('.log', ''))}
+            className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 text-[11px] text-rd-text-dim hover:text-rd-text-active transition-colors"
+            title={t('common.exportAsTxtTitle')}
+          >
+            <Icon name="download" size={13} />
+            {t('common.exportTxt')}
+          </button>
+          <button 
+            onClick={() => exportToHtml(displayContent, filename.replace('.log', ''))}
+            className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 text-[11px] text-rd-text-dim hover:text-rd-text-active transition-colors"
+            title={t('common.exportAsHtmlTitle')}
+          >
+            <Icon name="layout" size={13} />
+            {t('common.exportHtml')}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 relative">
+        <Editor
+          height="100%"
+          language="text"
+          theme="vs-dark"
+          value={displayContent}
+          onMount={(editor) => {
+            editorRef.current = editor;
+            // Se i frame sono già pronti (preload terminato prima del mount), applica subito
+            if (framesRef.current.length > 0) applyCommitDecorations();
+          }}
+          options={{
+            readOnly: true,
+            glyphMargin: true,
+            minimap: { enabled: true },
+            fontSize: 13,
+            fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
+            wordWrap: 'on',
+            padding: { top: 12, bottom: 12 },
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            renderLineHighlight: 'all',
+            lineHeight: 22,
+            letterSpacing: 0.4,
+            cursorBlinking: 'smooth',
+            smoothScrolling: true,
+            links: true,
+            contextmenu: true,
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'auto',
+              useShadows: false,
+              verticalScrollbarSize: 10,
+            }
+          }}
+        />
+      </div>
     </div>
   );
 };
