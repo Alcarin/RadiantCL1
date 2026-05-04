@@ -297,3 +297,44 @@
 .inline-reconnect-btn:active {
   transform: translateY(0);
 }
+
+/* ── ANSI Color Support (Monaco Decorations - xterm.js Palette) ── */
+
+.monaco-editor .view-line span.ansi-black { color: #2e3436; }
+.monaco-editor .view-line span.ansi-red { color: #cc0000; }
+.monaco-editor .view-line span.ansi-green { color: #4e9a06; }
+.monaco-editor .view-line span.ansi-yellow { color: #c4a000; }
+.monaco-editor .view-line span.ansi-blue { color: #3465a4; }
+.monaco-editor .view-line span.ansi-magenta { color: #75507b; }
+.monaco-editor .view-line span.ansi-cyan { color: #06989a; }
+.monaco-editor .view-line span.ansi-white { color: #d3d7cf; }
+.monaco-editor .view-line span.ansi-bright-black { color: #555753; }
+.monaco-editor .view-line span.ansi-bright-red { color: #ef2929; }
+.monaco-editor .view-line span.ansi-bright-green { color: #8ae234; }
+.monaco-editor .view-line span.ansi-bright-yellow { color: #fce94f; }
+.monaco-editor .view-line span.ansi-bright-blue { color: #729fcf; }
+.monaco-editor .view-line span.ansi-bright-magenta { color: #ad7fa8; }
+.monaco-editor .view-line span.ansi-bright-cyan { color: #34e2e2; }
+.monaco-editor .view-line span.ansi-bright-white { color: #eeeeec; }
+
+.monaco-editor .view-line span.ansi-bg-black { background-color: #2e3436; }
+.monaco-editor .view-line span.ansi-bg-red { background-color: #cc0000; }
+.monaco-editor .view-line span.ansi-bg-green { background-color: #4e9a06; }
+.monaco-editor .view-line span.ansi-bg-yellow { background-color: #c4a000; }
+.monaco-editor .view-line span.ansi-bg-blue { background-color: #3465a4; }
+.monaco-editor .view-line span.ansi-bg-magenta { background-color: #75507b; }
+.monaco-editor .view-line span.ansi-bg-cyan { background-color: #06989a; }
+.monaco-editor .view-line span.ansi-bg-white { background-color: #d3d7cf; }
+.monaco-editor .view-line span.ansi-bg-bright-black { background-color: #555753; }
+.monaco-editor .view-line span.ansi-bg-bright-red { background-color: #ef2929; }
+.monaco-editor .view-line span.ansi-bg-bright-green { background-color: #8ae234; }
+.monaco-editor .view-line span.ansi-bg-bright-yellow { background-color: #fce94f; }
+.monaco-editor .view-line span.ansi-bg-bright-blue { background-color: #729fcf; }
+.monaco-editor .view-line span.ansi-bg-bright-magenta { background-color: #ad7fa8; }
+.monaco-editor .view-line span.ansi-bg-bright-cyan { background-color: #34e2e2; }
+.monaco-editor .view-line span.ansi-bg-bright-white { background-color: #eeeeec; }
+
+.monaco-editor .view-line span.ansi-bold { font-weight: bold; }
+.monaco-editor .view-line span.ansi-dim { opacity: 0.6; }
+.monaco-editor .view-line span.ansi-italic { font-style: italic; }
+.monaco-editor .view-line span.ansi-underline { text-decoration: underline; }

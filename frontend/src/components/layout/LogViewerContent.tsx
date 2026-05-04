@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { PreloadLogFrames } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsEmit } from '../../../wailsjs/runtime/runtime';
@@ -7,6 +7,7 @@ import { exportToTxt, exportToHtml } from '../../lib/exportUtils';
 import { Icon } from '../ui/Icon';
 import { useTranslation } from 'react-i18next';
 import { editorManager } from '../../lib/editorManager';
+import { parseAnsi } from '../../lib/ansiManager';
 
 interface LogViewerContentProps {
   content: string;
@@ -25,12 +26,18 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
   const [displayContent, setDisplayContent] = useState(initialContent);
   const [frames, setFrames] = useState<any[]>([]);
 
+  // Parsiamo il contenuto corrente per estrarre testo pulito e decorazioni ANSI
+  const { cleanText, ansiDecorations } = useMemo(() => {
+    const parsed = parseAnsi(displayContent);
+    return { cleanText: parsed.cleanText, ansiDecorations: parsed.decorations };
+  }, [displayContent]);
+
   // ── Stato riproduzione: ref (loop senza stale closure) + state (re-render) + store (UI via rAF) ──
   const [isPlayingState, _setIsPlayingRaw] = useState(false);
   const isPlayingRef = useRef(false);
   const setIsPlaying = useCallback((val: boolean) => {
     isPlayingRef.current = val;
-    playbackStore.isPlaying = val;  // letto da HistoryView via rAF, zero Go
+    playbackStore.isPlaying = val;
     _setIsPlayingRaw(val);
   }, []);
 
@@ -49,7 +56,6 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
     });
   }, []);
 
-  // Trigger per far ripartire il loop quando displayFrame carica un nuovo frame
   const [frameAdvanceTick, setFrameAdvanceTick] = useState(0);
 
   // ── Refs stabili per loop e contenuto ──
@@ -61,16 +67,19 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
   const framesRef = useRef<any[]>([]);
 
   const editorRef = useRef<any>(null);
-  const decorationIdsRef = useRef<string[]>([]);  // Monaco decoration IDs per i commit markers
+  const decorationIdsRef = useRef<string[]>([]);
 
-  // ── Applica decorazioni gutter: punto gold + hover tooltip su ogni riga di commit ──
-  const applyCommitDecorations = useCallback(() => {
-    if (!editorRef.current || framesRef.current.length === 0) return;
+  // ── Applica decorazioni: unisce commit markers (gutter) e colori ANSI (inline) ──
+  const applyAllDecorations = useCallback(() => {
+    if (!editorRef.current) return;
+    
     const marks = marksRef.current;
     const frames = framesRef.current;
 
-    const decorations = marks.map((mark, i) => {
+    // 1. Decorazioni Commit Markers
+    const commitDecorations = marks.map((mark, i) => {
       const f = frames[i];
+      if (!f) return null;
       const ts = f.timestamp ? new Date(String(f.timestamp)).toLocaleString(undefined, {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
@@ -87,25 +96,31 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
           overviewRuler: { color: '#fde04780', position: 4 },
         }
       };
-    });
+    }).filter(d => d !== null) as any[];
 
-    // deltaDecorations: rimpiazza le precedenti (safe anche se vuoto)
+    // 2. Unione con decorazioni ANSI
+    const allDecorations = [...commitDecorations, ...ansiDecorations];
+
     decorationIdsRef.current = editorRef.current.deltaDecorations(
       decorationIdsRef.current,
-      decorations
+      allDecorations
     );
-  }, []);
+  }, [ansiDecorations]);
 
-  // ── Bulk Preload: unica chiamata al backend, poi tutto è JS ──
+  // ── Bulk Preload ──
   useEffect(() => {
     let isMounted = true;
     const preload = async () => {
-      console.log(`[LogViewer] Preloading frames for ${host}/${filename}...`);
       try {
         const loadedFrames = await PreloadLogFrames(host, filename);
         if (!isMounted) return;
 
-        const safeFrames = loadedFrames || [];
+        // Normalizziamo tutti i frame immediatamente per evitare doppi accapo ovunque
+        const safeFrames = (loadedFrames || []).map((f: any) => ({
+          ...f,
+          delta: f.delta.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        }));
+        
         setFrames(safeFrames);
         framesRef.current = safeFrames;
 
@@ -118,20 +133,21 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
         for (const f of safeFrames) {
           initialFull += f.delta;
           const deltaLines = f.delta === '' ? 0 : f.delta.split('\n').length - 1;
+          
+          for (let j = 0; j < deltaLines; j++) {
+            marks.push(runningLines + 1);
+            messages.push(f.message || '');
+            timestamps.push(f.timestamp ? String(f.timestamp) : '');
+          }
           runningLines += deltaLines;
-          marks.push(runningLines);
-          messages.push(f.message);
-          // timestamp è un time.Time serializzato da Go come stringa ISO 8601
-          timestamps.push(f.timestamp ? String(f.timestamp) : '');
         }
 
-        if (runningLines === 0 && initialFull.length > 0) runningLines = 1;
-
-        baseContentRef.current = initialFull;
+        totalLinesRef.current = runningLines;
         marksRef.current = marks;
+        baseContentRef.current = initialFull;
+        setDisplayContent(initialFull);
         totalLinesRef.current = runningLines;
 
-        // ── Popola lo store: da qui in poi la riproduzione è tutta JS, zero Go ──
         playbackStore.totalLines = runningLines;
         playbackStore.currentLine = runningLines;
         playbackStore.frameMarks = marks;
@@ -144,12 +160,7 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
         setDisplayContent(initialFull);
         setCurrentIndex(runningLines);
 
-        // app:playback:init: unico evento Wails giustificato (bassa frequenza, una sola volta)
-        // Serve a HistoryView per aggiornare gli stati React (sliderMax, frameMarks per i tick marks)
-        EventsEmit('app:playback:init', { totalLines: runningLines, marks, messages, timestamps, tabId });
-
-        // Decorazioni: schedulare su rAF per garantire che il Monaco model sia aggiornato
-        requestAnimationFrame(() => applyCommitDecorations());
+        requestAnimationFrame(() => applyAllDecorations());
 
       } catch (err) {
         if (!isMounted) return;
@@ -162,13 +173,12 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
       if (editorRef.current) {
         const state = editorRef.current.saveViewState();
         editorManager.saveViewState(tabId, state);
-        // Distacchiamo il modello per sicurezza
         editorRef.current.setModel(null);
       }
     };
   }, [host, filename, setCurrentIndex, tabId]);
 
-  // ── displayFrame: STABILE — legge solo da refs, nessuna stale closure ──
+  // ── displayFrame ──
   const displayFrame = useCallback((targetLine: number, instant: boolean = false) => {
     const currentFrames = framesRef.current;
     if (currentFrames.length === 0) return;
@@ -187,7 +197,6 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
     const targetDelta = currentFrames[targetFrameIdx].delta;
 
     if (instant || !isPlayingRef.current) {
-      // ── Seek istantaneo ──
       typeQueueRef.current = [];
       const lines = targetDelta.split('\n');
       const allowedLinesInDelta = Math.max(0, targetLine - linesBeforeTargetFrame);
@@ -198,9 +207,8 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
       baseContentRef.current = full;
       setDisplayContent(full);
       setCurrentIndex(targetLine);
-      playbackStore.currentLine = targetLine;  // store aggiornato sincrono → rAF lo legge al prossimo frame
+      playbackStore.currentLine = targetLine;
     } else {
-      // ── Modalità typewriter: riprende dal punto corrente ──
       const idxSnap = currentIndexRef.current;
       const startLineForTyping = Math.max(linesBeforeTargetFrame, idxSnap);
       const linesToSkipInsideFrame = startLineForTyping - linesBeforeTargetFrame;
@@ -220,17 +228,15 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
 
       setCurrentIndex(startLineForTyping);
       playbackStore.currentLine = startLineForTyping;
-      setFrameAdvanceTick(prev => prev + 1); // insurance per il loop se currentIndexState non cambia
+      setFrameAdvanceTick(prev => prev + 1);
     }
   }, [setCurrentIndex]);
 
-  // ── Event Handlers: deps stabili, registrati una sola volta ──
-  // Nota: i comandi (play/pause/stop/seek/...) arrivano da HistoryView via Wails.
-  // Questo è accettabile: sono azioni utente (bassa frequenza, latenza impercettibile).
+  // ── Event Handlers ──
   useEffect(() => {
     const handlePlay = (data: any) => {
       if (data.tabId !== tabId) return;
-      if (isPlayingRef.current) return;                   // idempotente
+      if (isPlayingRef.current) return;
       let newIdx = currentIndexRef.current;
       if (newIdx >= totalLinesRef.current && typeQueueRef.current.length === 0) {
         displayFrame(0, true);
@@ -241,7 +247,7 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
 
     const handlePause = (data: any) => {
       if (data.tabId !== tabId) return;
-      if (!isPlayingRef.current) return;                  // idempotente
+      if (!isPlayingRef.current) return;
       setIsPlaying(false);
     };
 
@@ -307,60 +313,48 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
     return () => unsubs.forEach(unsub => unsub());
   }, [tabId, displayFrame, setIsPlaying]);
 
-  // ── Main Loop: si riavvia tramite currentIndexState o frameAdvanceTick ──
+  // ── Main Loop ──
   useEffect(() => {
     if (!isPlayingState) return;
-
     const delay = Math.max(50, 500 / playbackSpeed);
-
     timerRef.current = setTimeout(() => {
-      if (!isPlayingRef.current) return; // guard: pausa sopraggiunta durante il delay
-
+      if (!isPlayingRef.current) return;
       if (typeQueueRef.current.length > 0) {
-        // ── Avanza riga per riga nella coda typewriter ──
         const chunk = typeQueueRef.current.shift()!;
         baseContentRef.current += chunk;
         setDisplayContent(baseContentRef.current);
-        // Aggiorna store sincrono → rAF lo legge al prossimo frame (≤16ms), zero latenza
         const nextL = currentIndexRef.current + 1;
         playbackStore.currentLine = nextL;
         setCurrentIndex(nextL);
       } else {
-        // ── Coda esaurita: avanza al prossimo frame ──
         const cIdx = currentIndexRef.current;
         const nextFrameIdx = marksRef.current.findIndex(m => m > cIdx);
         if (nextFrameIdx !== -1) {
           displayFrame(marksRef.current[nextFrameIdx], false);
         } else {
-          setIsPlaying(false); // Fine del playback — store.isPlaying = false via wrapper
+          setIsPlaying(false);
         }
       }
     }, delay);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [isPlayingState, currentIndexState, frameAdvanceTick, playbackSpeed, displayFrame, setCurrentIndex, setIsPlaying]);
 
-  // ── Auto-scroll + ri-applicazione decorazioni ad ogni cambio di contenuto ──
-  // Monaco cancella le decorazioni a ogni setValue() (value prop change) → le ri-applichiamo.
-  // Il costo è trascurabile: deltaDecorations su N commit (di solito <10) è O(N).
+  // ── Auto-scroll + ri-applicazione decorazioni ──
   useEffect(() => {
     if (editorRef.current) {
       const model = editorRef.current.getModel();
       if (model) {
-        if (model.getValue() !== displayContent) {
-          model.setValue(displayContent);
+        if (model.getValue() !== cleanText) {
+          model.setValue(cleanText);
         }
         editorRef.current.revealLine(model.getLineCount());
       }
     }
-    applyCommitDecorations();
-  }, [displayContent, applyCommitDecorations]);
+    applyAllDecorations();
+  }, [cleanText, applyAllDecorations]);
 
   return (
     <div className="flex flex-col h-full bg-rd-base relative">
-      {/* Toolbar Esportazione */}
       <div className="flex items-center justify-between px-4 py-2 bg-rd-base-alt border-b border-rd-border-subtle shrink-0">
         <div className="flex items-center gap-2 overflow-hidden">
           <Icon name="fileText" size={16} className="text-rd-text-dim shrink-0" />
@@ -394,21 +388,13 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
           theme="vs-dark"
           onMount={(editor) => {
             editorRef.current = editor;
-            
-            // Recupera o crea il modello persistente
-            const model = editorManager.getOrCreateModel(tabId, displayContent, 'text');
+            const model = editorManager.getOrCreateModel(tabId, cleanText, 'text');
             editor.setModel(model);
-
-            // Ripristina lo stato della vista
             const savedState = editorManager.getViewState(tabId);
             if (savedState) {
-              setTimeout(() => {
-                editor.restoreViewState(savedState);
-              }, 50);
+              setTimeout(() => { editor.restoreViewState(savedState); }, 50);
             }
-
-            // Se i frame sono già pronti (preload terminato prima del mount), applica subito
-            if (framesRef.current.length > 0) applyCommitDecorations();
+            if (framesRef.current.length > 0) applyAllDecorations();
           }}
           options={{
             readOnly: true,

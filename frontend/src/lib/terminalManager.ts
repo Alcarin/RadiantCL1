@@ -10,7 +10,8 @@ interface TerminalInstance {
   fitAddon: FitAddon;
   container: HTMLDivElement;
   disposableData?: { dispose: () => void };
-  replayed?: boolean; // Flag per evitare replay multipli dello stesso file
+  replayed?: boolean;
+  replayPromise?: Promise<void>;
 }
 
 class TerminalManager {
@@ -128,10 +129,10 @@ class TerminalManager {
     }
 
     // Se abbiamo i dati del log e non abbiamo ancora fatto il replay per questa istanza
-    if (hostLabel && logFile && !instance.replayed) {
+    if (hostLabel && logFile && !instance.replayed && !instance.replayPromise) {
       console.log(`[TerminalManager] Requesting replay for ${sessionId} (file: ${logFile}, host: ${hostLabel})`);
       const currentInstance = instance;
-      ReplayTerminalLog(sessionId, hostLabel, logFile).then(content => {
+      instance.replayPromise = ReplayTerminalLog(sessionId, hostLabel, logFile).then(content => {
         if (content) {
           console.log(`[TerminalManager] Replay successful for ${sessionId}, writing ${content.length} chars`);
           currentInstance.term.write(content);
@@ -159,11 +160,13 @@ class TerminalManager {
     return this.instances.get(sessionId);
   }
 
-
-
-  triggerZombieWidget(sessionId: string) {
+  async triggerZombieWidget(sessionId: string) {
     const instance = this.instances.get(sessionId);
     if (instance) {
+      // Se c'è un replay in corso, aspettiamo che finisca prima di scrivere il messaggio di errore
+      if (instance.replayPromise) {
+        await instance.replayPromise;
+      }
       console.log(`[TerminalManager] Triggering zombie widget for ${sessionId}`);
       (instance as any).onCloseInternal?.();
     }

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **High-Fidelity ANSI Rendering**: Complete overhaul of the log viewer parsing engine; it now correctly identifies and strips complex CSI/OSC escape sequences while preserving visual metadata.
+- **Atomic Decoration Mapping**: Implemented a single-pass parser in `ansiManager` that computes decoration ranges in real-time as the text is cleaned, ensuring styles (bold, colors) are perfectly aligned with the displayed content.
+- **xterm.js Color Parity**: Aligned the ANSI color palette with the standard xterm.js (Ubuntu/Gnome Terminal) theme, providing a consistent visual experience between live terminals and recorded logs.
 - **Independent Playback Sessions**: Converted the singleton playback store into an instance-based factory, allowing multiple logs to be replayed simultaneously in split-view without state interference.
 - **Unified Focus Highlighting**: Implemented global focus tracking for Mosaic panels; the active group is now clearly identified by a prominent 2px "Radiant Gold" top indicator on the focused tab.
 - **Intelligent Focus Routing**: Clicking on any sidebar item (connections, logs, or open editors) now automatically identifies the target group and shifts the global focus, ensuring interactions occur in the correct workspace context.
@@ -66,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Proactive Frame Normalization**: Log frames are now normalized (`\r\n` -> `\n`) immediately upon preloading, eliminating double-spacing artifacts and ensuring consistent line height across the entire log history.
+- **Enhanced CSS Specificity**: Refactored the ANSI decoration styles to use high-specificity selectors, allowing colors to correctly override Monaco's internal tokenization without the need for `!important` flags.
 - **Refined Tab Aesthetics**: Increased tab bar height to 42px to accommodate horizontal scrollbars without obstructing tab content or labels.
 - **Ergonomic Spacing**: Added 3px of top padding to the tab container to prevent the active indicator from being clipped by workspace split handles.
 - **Enhanced Focus Indicator**: Upgraded the active tab bar with a double-glow neon effect for improved visibility in complex multi-panel layouts.
@@ -80,6 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Log Opening Race Condition**: Resolved a critical bug where rapid clicks in the History sidebar triggered duplicate tab creation and React key conflicts; implemented atomic state updates and deduplication in the editor registry.
+- **Terminal Reconnection Positioning**: Fixed a race condition where the "Connection Interrupted" message and reconnection widget appeared at the top of the terminal during workspace restoration; implemented a `replayPromise` synchronization to ensure markers are placed at the end of the replayed log buffer.
+- **ANSI "Over-consumption" Bug**: Fixed a regex flaw that caused valid text characters to be stripped when immediately following complex ANSI control sequences.
+- **Editor Crash on Debug**: Fixed a reference error in the Log Viewer component that caused a crash during the application of decorations.
 - **Editor State Preservation**: Implemented deterministic rendering keys for Mosaic groups, ensuring that moving tabs between panels preserves terminal buffers and Monaco editor state without re-initialization.
 - **Tab Duplication Bug**: Resolved a logic error where clicking a log in the history sidebar would always re-open it in the "main-group" (master panel); it now correctly focuses the existing tab if already open or opens it in the currently active group.
 - **Tab Split Focus**: Fixed an issue where newly created groups from a split operation wouldn't receive focus, leaving the active tab indicator hidden.

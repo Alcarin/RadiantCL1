@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { editorManager } from '../../lib/editorManager';
+import { parseAnsi } from '../../lib/ansiManager';
 
 interface FileEditorContentProps {
   tabId: string;
@@ -14,6 +15,10 @@ export const FileEditorContent: React.FC<FileEditorContentProps> = ({
   language = 'text'
 }) => {
   const editorRef = useRef<any>(null);
+  const decorationIdsRef = useRef<string[]>([]);
+
+  // Parsiamo il contenuto per estrarre testo pulito e decorazioni ANSI
+  const { cleanText, decorations } = useMemo(() => parseAnsi(content), [content]);
 
   useEffect(() => {
     // Cleanup: salva lo stato prima dello smontaggio
@@ -21,12 +26,21 @@ export const FileEditorContent: React.FC<FileEditorContentProps> = ({
       if (editorRef.current) {
         const state = editorRef.current.saveViewState();
         editorManager.saveViewState(tabId, state);
-        // Distacchiamo il modello per evitare che l'editor lo smaltisca (dispose) 
-        // durante la distruzione del widget
+        // Distacchiamo il modello per sicurezza
         editorRef.current.setModel(null);
       }
     };
   }, [tabId]);
+
+  // Applica le decorazioni ANSI quando l'editor è montato o il contenuto cambia
+  useEffect(() => {
+    if (editorRef.current && decorations.length > 0) {
+      decorationIdsRef.current = editorRef.current.deltaDecorations(
+        decorationIdsRef.current,
+        decorations
+      );
+    }
+  }, [decorations]);
 
   return (
     <div className="w-full h-full bg-rd-base relative">
@@ -37,14 +51,18 @@ export const FileEditorContent: React.FC<FileEditorContentProps> = ({
         onMount={(editor) => {
           editorRef.current = editor;
           
-          // Recupera o crea il modello persistente
-          const model = editorManager.getOrCreateModel(tabId, content, language);
+          // Recupera o crea il modello persistente (usando il testo pulito)
+          const model = editorManager.getOrCreateModel(tabId, cleanText, language);
           editor.setModel(model);
+
+          // Applica decorazioni iniziali
+          if (decorations.length > 0) {
+            decorationIdsRef.current = editor.deltaDecorations([], decorations);
+          }
 
           // Ripristina lo stato della vista (scroll, cursor, selection)
           const savedState = editorManager.getViewState(tabId);
           if (savedState) {
-            // Piccolo timeout per assicurarsi che il layout sia pronto
             setTimeout(() => {
               editor.restoreViewState(savedState);
               editor.focus();

@@ -423,29 +423,42 @@ function App() {
         return { ...prev, [tabId]: newTab };
       });
 
-      // 1. Controlla se la tab è già presente in QUALSIASI gruppo
-      let targetGroup = focusedGroupIdRef.current || 'main-group';
-      let existingGroupId: string | null = null;
-      
-      for (const [gid, tabs] of Object.entries(editorGroupsRef.current)) {
-        if ((tabs as string[]).includes(tabId)) {
-          existingGroupId = gid;
-          break;
+      // Usiamo l'aggiornamento funzionale per evitare race conditions sulla duplicazione dei tasti
+      setEditorGroups(prevGroups => {
+        // 1. Controlla se la tab è già presente in QUALSIASI gruppo
+        let existingGroupId: string | null = null;
+        for (const [gid, tabs] of Object.entries(prevGroups)) {
+          if ((tabs as string[]).includes(tabId)) {
+            existingGroupId = gid;
+            break;
+          }
         }
-      }
 
-      if (existingGroupId) {
-        // La tab esiste già, porta il focus su quel gruppo e seleziona la tab
-        setFocusedGroupId(existingGroupId);
-        setActiveTabPerGroup(prev => ({ ...prev, [existingGroupId!]: tabId }));
-      } else {
-        // La tab non esiste, aggiungila al gruppo attualmente a fuoco
-        setEditorGroups(prev => {
-          const groupTabs = prev[targetGroup] || [];
-          return { ...prev, [targetGroup]: [...groupTabs, tabId] };
+        if (existingGroupId) {
+          // La tab esiste già, non facciamo nulla qui (il focus verrà gestito dopo)
+          return prevGroups;
+        } else {
+          // La tab non esiste, aggiungila al gruppo a fuoco (fallback su main-group)
+          const target = focusedGroupIdRef.current || 'main-group';
+          const groupTabs = prevGroups[target] || [];
+          return { ...prevGroups, [target]: [...groupTabs, tabId] };
+        }
+      });
+
+      // Gestione del focus e selezione (separata dall'aggiornamento strutturale)
+      setTimeout(() => {
+        setEditorGroups(current => {
+          let foundGid: string | null = null;
+          for (const [gid, tabs] of Object.entries(current)) {
+            if (tabs.includes(tabId)) { foundGid = gid; break; }
+          }
+          if (foundGid) {
+            setFocusedGroupId(foundGid);
+            setActiveTabPerGroup(prev => ({ ...prev, [foundGid!]: tabId }));
+          }
+          return current;
         });
-        setActiveTabPerGroup(prev => ({ ...prev, [targetGroup]: tabId }));
-      }
+      }, 0);
     };
 
     EventsOff('app:host-updated');

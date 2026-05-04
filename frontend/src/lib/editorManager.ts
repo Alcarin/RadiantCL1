@@ -23,6 +23,12 @@ class EditorManager {
       model = undefined;
     }
 
+    // Se il modello esiste già, aggiorniamo il contenuto se è cambiato
+    if (model && content !== '' && model.getValue() !== content) {
+      console.log(`[EditorManager] Updating existing model content for ${id}`);
+      model.setValue(content);
+    }
+
     if (!model) {
       console.log(`[EditorManager] Creating/Retrieving model for ${id}`);
       
