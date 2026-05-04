@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Brand Refresh**: Updated application logo across all main touchpoints, including the title bar, loading overlay, and system executable icon.
 - **Proactive Frame Normalization**: Log frames are now normalized (`\r\n` -> `\n`) immediately upon preloading, eliminating double-spacing artifacts and ensuring consistent line height across the entire log history.
 - **Enhanced CSS Specificity**: Refactored the ANSI decoration styles to use high-specificity selectors, allowing colors to correctly override Monaco's internal tokenization without the need for `!important` flags.
 - **Refined Tab Aesthetics**: Increased tab bar height to 42px to accommodate horizontal scrollbars without obstructing tab content or labels.

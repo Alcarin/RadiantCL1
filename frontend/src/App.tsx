@@ -4,6 +4,7 @@ import { OpenConfig, SaveAppState, GetAppState, GetHost } from '../wailsjs/go/ma
 import { main, db } from '../wailsjs/go/models';
 import { ASTNodeView } from './components/ASTNodeView';
 
+import logo from './assets/images/logo.svg';
 import { Layout } from './components/layout/Layout';
 import { ActivityBar } from './components/layout/ActivityBar';
 import { SideBar } from './components/layout/SideBar';
@@ -979,7 +980,7 @@ function App() {
             <div className="absolute inset-0 rounded-full border-t-2 border-r-2 border-rd-focus-border animate-spin"></div>
             <div className="absolute inset-2 rounded-full border-b-2 border-l-2 border-blue-500/30 animate-spin-slow"></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <Icon name="terminal" size={32} className="text-rd-focus-border animate-pulse" />
+              <img src={logo} className="w-12 h-12 object-contain animate-pulse" alt="RadiantCL1 Logo" />
             </div>
           </div>
           <h2 className="text-xl font-light tracking-[0.2em] uppercase text-zinc-300 animate-pulse">

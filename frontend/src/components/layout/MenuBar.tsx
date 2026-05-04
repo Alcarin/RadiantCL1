@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon, IconName } from '../ui/Icon';
+import logo from '../../assets/images/logo.svg';
 import { WindowMinimise, WindowToggleMaximise, Quit, Environment, EventsEmit, EventsOn } from '../../../wailsjs/runtime/runtime';
 import { HostsService } from '../../lib/hosts_service';
 import { TreeNode } from '../ui/TreeView';
@@ -185,7 +186,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
     >
       {isMac ? renderMacControls() : (
         <div className="flex items-center justify-center w-[46px] shrink-0">
-          <Icon name="terminal" size={16} className="text-rd-accent" />
+          <img src={logo} className="w-4 h-4 object-contain" alt="Logo" />
         </div>
       )}
 
