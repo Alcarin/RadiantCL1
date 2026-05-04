@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import { Icon } from '../ui/Icon';
 import { Terminal } from '../ui/Terminal';
 import { LogViewerContent } from './LogViewerContent';
+import { FileEditorContent } from './FileEditorContent';
 import { cn } from '../../lib/utils';
 import {
   SortableContext,
@@ -34,6 +35,8 @@ interface EditorGroupProps {
   content: string;
   language?: string;
   isDragging?: boolean; // Iniettato da App.tsx per sapere se è in corso un drag
+  onFocus?: () => void;
+  isFocused?: boolean;
 }
 
 // ─── DropZone sui bordi del gruppo per lo split ─────────────────────────────
@@ -82,9 +85,10 @@ const GroupDropZone: React.FC<{ id: string; isDragging: boolean }> = ({ id, isDr
 const SortableTab: React.FC<{
   tab: Tab;
   isActive: boolean;
+  isFocused: boolean;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
-}> = ({ tab, isActive, onSelect, onClose }) => {
+}> = ({ tab, isActive, isFocused, onSelect, onClose }) => {
   const {
     attributes,
     listeners,
@@ -116,17 +120,17 @@ const SortableTab: React.FC<{
           : 'bg-rd-tab-inactive text-rd-text-dim hover:bg-rd-list-hover'
       )}
     >
-      {/* Indicatore scheda attiva — linea in alto */}
-      {isActive && (
-        <div className="absolute top-0 left-0 right-0 h-px bg-rd-focus-border" />
+      {/* Indicatore scheda attiva — linea in alto (solo se il gruppo è focalizzato) */}
+      {isActive && isFocused && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-rd-focus-border shadow-[0_0_15px_rgba(201,168,76,0.8),0_0_5px_rgba(201,168,76,1)] z-20" />
       )}
 
       <Icon
         name={tab.icon || (tab.type === 'terminal' ? 'terminal' : tab.type === 'log-viewer' ? 'clock' : 'file')}
         size={14}
         className={cn(
-          isActive ? 'text-rd-text-active' : 'text-rd-text-dim',
-          (tab.type === 'terminal' || tab.type === 'log-viewer') && 'text-rd-accent'
+          isActive ? (isFocused ? 'text-rd-text-active' : 'text-zinc-400') : 'text-rd-text-dim',
+          (tab.type === 'terminal' || tab.type === 'log-viewer') && (isFocused ? 'text-rd-accent' : 'text-rd-accent/60')
         )}
       />
 
@@ -167,6 +171,8 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
   content,
   language = 'text',
   isDragging = false,
+  onFocus,
+  isFocused,
 }) => {
   const activeTabId = activeTabIdProp || (tabs.length > 0 ? tabs[0].id : '');
   
@@ -177,7 +183,10 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
 
   return (
     // Il wrapper è `relative` per contenere le DropZone di split
-    <div className="flex flex-col h-full bg-rd-base overflow-hidden relative">
+    <div 
+      className="flex flex-col h-full bg-rd-base overflow-hidden relative"
+      onMouseDownCapture={onFocus}
+    >
 
       {/* ── DropZone di drag & drop (visibili solo durante il trascinamento) ── */}
       {isDragging && (
@@ -192,7 +201,7 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
 
       {/* ── Tab Bar ── */}
       <div
-        className="flex bg-rd-base overflow-x-auto shrink-0 select-none no-scrollbar border-b border-rd-border-subtle"
+        className="flex bg-rd-base overflow-x-auto shrink-0 select-none border-b border-rd-border-subtle pt-[3px]"
         style={{ height: 'var(--spacing-tab-height)' }}
         data-ui-chrome
       >
@@ -205,6 +214,7 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
               key={tab.id}
               tab={tab}
               isActive={effectiveActiveTabId === tab.id}
+              isFocused={isFocused || false}
               onSelect={onTabSelect}
               onClose={onTabClose}
             />
@@ -236,29 +246,12 @@ export const EditorGroup: React.FC<EditorGroupProps> = ({
 
         {/* Editor Monaco */}
         {tabs.find(t => t.id === effectiveActiveTabId)?.type === 'editor' && (
-          <div key={`editor-${groupId}-${effectiveActiveTabId}`} className="w-full h-full">
-            <Editor
-              height="100%"
-              language={language}
-              theme="vs-dark"
-              value={content}
-              options={{
-                readOnly: true,
-                minimap: { enabled: true },
-                fontSize: 13,
-                fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
-                wordWrap: 'on',
-                padding: { top: 8 },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                renderLineHighlight: 'line',
-                lineHeight: 20,
-                letterSpacing: 0.3,
-                cursorBlinking: 'smooth',
-                smoothScrolling: true,
-              }}
-            />
-          </div>
+          <FileEditorContent
+            key={`editor-content-${effectiveActiveTabId}`}
+            tabId={effectiveActiveTabId}
+            content={content}
+            language={language}
+          />
         )}
 
         {/* Log Viewer */}

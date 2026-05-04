@@ -7,17 +7,35 @@
  * Zero round-trip Go, zero latenza, zero rischio di eventi fuori ordine.
  * Equivalente esatto di: HTMLVideoElement.currentTime / HTMLVideoElement.paused
  */
-export const playbackStore = {
-  /** Linea corrente (aggiornata ad ogni tick del typewriter) */
-  currentLine: 0,
-  /** Totale linee del log corrente (impostato all'init dal preloading) */
-  totalLines: 0,
-  /** Stato di riproduzione */
-  isPlaying: false,
-  /** Posizioni dei commit nel log (in numero di linee) */
-  frameMarks: [] as number[],
-  /** Messaggi dei commit corrispondenti */
-  frameMessages: [] as string[],
-  /** Timestamp ISO dei commit (es. '2026-04-18T18:30:24+02:00') */
-  frameTimestamps: [] as string[],
+export interface PlaybackState {
+  currentLine: number;
+  totalLines: number;
+  isPlaying: boolean;
+  frameMarks: number[];
+  frameMessages: string[];
+  frameTimestamps: string[];
+}
+
+const stores = new Map<string, PlaybackState>();
+
+export const getPlaybackStore = (tabId: string): PlaybackState => {
+  let store = stores.get(tabId);
+  if (!store) {
+    store = {
+      currentLine: 0,
+      totalLines: 0,
+      isPlaying: false,
+      frameMarks: [],
+      frameMessages: [],
+      frameTimestamps: [],
+    };
+    stores.set(tabId, store);
+  }
+  return store;
 };
+
+/**
+ * Manteniamo un'istanza "legacy" per compatibilità durante la migrazione,
+ * ma punterà sempre all'ultima sessione inizializzata se non specificato.
+ */
+export const playbackStore = getPlaybackStore('default');

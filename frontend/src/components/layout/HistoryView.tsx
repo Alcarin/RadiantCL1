@@ -5,19 +5,21 @@ import { SideBarSection } from './SideBarSection';
 import { useTranslation } from 'react-i18next';
 import { EventsEmit, EventsOn } from '../../../wailsjs/runtime/runtime';
 import { Icon } from '../ui/Icon';
-import { playbackStore } from '../../stores/playbackStore';
+import { getPlaybackStore } from '../../stores/playbackStore';
 
 export const HistoryView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [hostLogs, setHostLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLog, setActiveLog] = useState<{ host: string; filename: string; id: string } | null>(null);
+  const activeLogRef = useRef<{ host: string; filename: string; id: string } | null>(null);
 
   // isPlaying: state per il bottone (React re-render), ref per aggiornamenti ottimistici
   const [isPlayingState, setIsPlayingState] = useState(false);
   const isPlayingRef = useRef(false);
 
-  // Stati a BASSA frequenza: cambiano solo a ogni nuovo log → un solo re-render
+  // Store corrente per il loop rAF
+  const currentStoreRef = useRef(getPlaybackStore('default'));
   const [sliderMax, setSliderMax] = useState(0);
   const [frameMarks, setFrameMarks] = useState<number[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -48,7 +50,7 @@ export const HistoryView: React.FC = () => {
     let rafId: number;
 
     const tick = () => {
-      const { currentLine, totalLines, isPlaying, frameMarks: marks, frameMessages: messages } = playbackStore;
+      const { currentLine, totalLines, isPlaying, frameMarks: marks, frameMessages: messages } = currentStoreRef.current;
 
       // ── Posizione: aggiornamento DOM diretto, skippato durante il drag ──
       if (!isSeekingRef.current) {
@@ -61,8 +63,8 @@ export const HistoryView: React.FC = () => {
         if (fIdx !== lastMsgFrameRef.current) {
           lastMsgFrameRef.current = fIdx;
           const msg = fIdx >= 0 && fIdx < messages.length ? messages[fIdx] : '';
-          const ts  = fIdx >= 0 && fIdx < playbackStore.frameTimestamps.length
-            ? playbackStore.frameTimestamps[fIdx] : '';
+          const ts  = fIdx >= 0 && fIdx < currentStoreRef.current.frameTimestamps.length
+            ? currentStoreRef.current.frameTimestamps[fIdx] : '';
           setCurrentMessage(msg);
           // Formatta il timestamp ISO in data/ora locale leggibile
           setCurrentTimestamp(ts ? new Date(ts).toLocaleString(undefined, {
@@ -90,9 +92,26 @@ export const HistoryView: React.FC = () => {
 
     const offTabChange = EventsOn('app:tab-changed', (tab: any) => {
       if (tab && tab.type === 'log-viewer') {
-        setActiveLog({ host: tab.logHost, filename: tab.logFilename, id: tab.id });
+        const logId = tab.id;
+        const logInfo = { host: tab.logHost, filename: tab.logFilename, id: logId };
+        setActiveLog(logInfo);
+        activeLogRef.current = logInfo;
+        
+        const store = getPlaybackStore(logId);
+        currentStoreRef.current = store;
+        
+        isPlayingRef.current = store.isPlaying;
+        setIsPlayingState(store.isPlaying);
+        setSliderMax(store.totalLines);
+        setFrameMarks(store.frameMarks);
+        
+        // Aggiornamento immediato DOM
+        if (sliderRef.current) sliderRef.current.value = String(store.currentLine);
+        if (counterRef.current) counterRef.current.textContent = `${store.currentLine} / ${store.totalLines}`;
       } else {
         setActiveLog(null);
+        activeLogRef.current = null;
+        currentStoreRef.current = getPlaybackStore('default');
         isPlayingRef.current = false;
         setIsPlayingState(false);
         setSliderMax(0);
@@ -108,6 +127,9 @@ export const HistoryView: React.FC = () => {
     // Necessario per aggiornare gli stati React di HistoryView (sliderMax, frameMarks per tick marks).
     // Il playbackStore è già stato popolato dall'engine in modo sincrono prima di questo evento.
     const offPlaybackInit = EventsOn('app:playback:init', (initData: any) => {
+      // Ignora init da tab che non sono quella attiva
+      if (activeLogRef.current && initData.tabId !== activeLogRef.current.id) return;
+
       const total = initData.totalLines as number;
       const marks = (initData.marks || []) as number[];
       const messages = (initData.messages || []) as string[];
@@ -271,7 +293,7 @@ export const HistoryView: React.FC = () => {
                   <span>Timeline</span>
                   {/* Fallback JSX: mostra l'ultimo valore noto su re-render React.
                       Tra un re-render e l'altro, il counterRef è aggiornato via DOM dal rAF loop. */}
-                  <span ref={counterRef}>{playbackStore.currentLine} / {sliderMax}</span>
+                  <span ref={counterRef}>{currentStoreRef.current.currentLine} / {sliderMax}</span>
                 </div>
 
                 <div className="relative w-full h-3 flex items-center">
@@ -304,7 +326,7 @@ export const HistoryView: React.FC = () => {
                       // Il rAF loop è bloccato da isSeekingRef, quindi lo slider non flickera.
                       const idx = parseInt(e.currentTarget.value);
                       if (counterRef.current) {
-                        counterRef.current.textContent = `${idx} / ${playbackStore.totalLines}`;
+                        counterRef.current.textContent = `${idx} / ${currentStoreRef.current.totalLines}`;
                       }
                       handlePlaybackAction('seek', idx);
                     }}
@@ -313,7 +335,7 @@ export const HistoryView: React.FC = () => {
                       // Seek finale per assicurarsi di atterrare sul valore corretto
                       const idx = parseInt(e.currentTarget.value);
                       if (counterRef.current) {
-                        counterRef.current.textContent = `${idx} / ${playbackStore.totalLines}`;
+                        counterRef.current.textContent = `${idx} / ${currentStoreRef.current.totalLines}`;
                       }
                       handlePlaybackAction('seek', idx);
                     }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DndProvider } from 'react-dnd';
 import { OpenConfig, SaveAppState, GetAppState, GetHost } from '../wailsjs/go/main/App';
 import { main, db } from '../wailsjs/go/models';
@@ -15,6 +15,7 @@ import { TreeView, TreeNode } from './components/ui/TreeView';
 import { Icon, IconName } from './components/ui/Icon';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { terminalManager } from './lib/terminalManager';
+import { editorManager } from './lib/editorManager';
 import { ConnectionsView } from './components/layout/ConnectionsView';
 import { HistoryView } from './components/layout/HistoryView';
 import { SideBarSection } from './components/layout/SideBarSection';
@@ -73,8 +74,15 @@ function App() {
 
   const [mosaicLayout, setMosaicLayout] = useState<LayoutNode | null>('main-group');
   const [activeTabPerGroup, setActiveTabPerGroup] = useState<Record<string, string>>({ 'main-group': '' });
+  const [focusedGroupId, setFocusedGroupId] = useState<string>('main-group');
   const [sideBarVisible, setSideBarVisible] = useState(true);
   const [isAppLoaded, setIsAppLoaded] = useState(false);
+
+  // Refs per gestori eventi Wails (evitano stale closures senza re-register frequenti)
+  const editorGroupsRef = useRef<Record<string, string[]>>(editorGroups);
+  const focusedGroupIdRef = useRef<string>(focusedGroupId);
+  useEffect(() => { editorGroupsRef.current = editorGroups; }, [editorGroups]);
+  useEffect(() => { focusedGroupIdRef.current = focusedGroupId; }, [focusedGroupId]);
 
   // Guard: se il layout salvato è in formato non valido, resettiamo
   // v6 usa {direction, first, second} oppure stringa
@@ -234,6 +242,7 @@ function App() {
     if (tabRegistry[tabId]) {
       // Find which group has it
       const groupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(tabId)) || 'main-group';
+      setFocusedGroupId(groupId);
       setActiveTabPerGroup(pg => ({ ...pg, [groupId]: tabId }));
       return;
     }
@@ -249,15 +258,17 @@ function App() {
       logHost: data.name
     };
 
+    const targetGroup = focusedGroupId || 'main-group';
+
     setTabRegistry(prev => ({ ...prev, [tabId]: newTab }));
     setEditorGroups(prev => {
-      const mainTabs = prev['main-group'] || [];
-      if (mainTabs.includes(tabId)) return prev;
-      return { ...prev, 'main-group': [...mainTabs, tabId] };
+      const groupTabs = prev[targetGroup] || [];
+      if (groupTabs.includes(tabId)) return prev;
+      return { ...prev, [targetGroup]: [...groupTabs, tabId] };
     });
     
-    setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
-  }, [tabRegistry, editorGroups]);
+    setActiveTabPerGroup(prev => ({ ...prev, [targetGroup]: tabId }));
+  }, [tabRegistry, editorGroups, focusedGroupId]);
 
 
   // Connection Hook
@@ -412,13 +423,29 @@ function App() {
         return { ...prev, [tabId]: newTab };
       });
 
-      setEditorGroups(prev => {
-        const mainTabs = prev['main-group'] || [];
-        if (mainTabs.includes(tabId)) return prev;
-        return { ...prev, 'main-group': [...mainTabs, tabId] };
-      });
+      // 1. Controlla se la tab è già presente in QUALSIASI gruppo
+      let targetGroup = focusedGroupIdRef.current || 'main-group';
+      let existingGroupId: string | null = null;
+      
+      for (const [gid, tabs] of Object.entries(editorGroupsRef.current)) {
+        if ((tabs as string[]).includes(tabId)) {
+          existingGroupId = gid;
+          break;
+        }
+      }
 
-      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
+      if (existingGroupId) {
+        // La tab esiste già, porta il focus su quel gruppo e seleziona la tab
+        setFocusedGroupId(existingGroupId);
+        setActiveTabPerGroup(prev => ({ ...prev, [existingGroupId!]: tabId }));
+      } else {
+        // La tab non esiste, aggiungila al gruppo attualmente a fuoco
+        setEditorGroups(prev => {
+          const groupTabs = prev[targetGroup] || [];
+          return { ...prev, [targetGroup]: [...groupTabs, tabId] };
+        });
+        setActiveTabPerGroup(prev => ({ ...prev, [targetGroup]: tabId }));
+      }
     };
 
     EventsOff('app:host-updated');
@@ -474,14 +501,22 @@ function App() {
 
   }, []);
 
-  // Monitor active tab changes to notify sidebar
+  // Monitora il cambio della tab attiva o del focus per notificare la barra laterale (playback, etc)
   useEffect(() => {
-    const activeId = activeTabPerGroup['main-group'];
+    const activeId = activeTabPerGroup[focusedGroupId];
     const activeTab = tabRegistry[activeId];
-    if (activeId) {
+    if (activeId && activeTab) {
       EventsEmit('app:tab-changed', activeTab);
+    } else if (!activeId) {
+      // Se il gruppo a fuoco non ha tab (raro ma possibile durante il drag), 
+      // proviamo a prendere la tab dell'ultimo gruppo valido
+      const fallbackGroupId = Object.keys(activeTabPerGroup).find(gid => activeTabPerGroup[gid]);
+      if (fallbackGroupId) {
+        const fallbackTab = tabRegistry[activeTabPerGroup[fallbackGroupId]];
+        if (fallbackTab) EventsEmit('app:tab-changed', fallbackTab);
+      }
     }
-  }, [activeTabPerGroup, tabRegistry]);
+  }, [activeTabPerGroup, focusedGroupId, tabRegistry]);
 
 
   // Handlers
@@ -504,11 +539,12 @@ function App() {
       };
 
       setTabRegistry(prev => ({ ...prev, [tabId]: newTab }));
+      const targetGroup = focusedGroupId || 'main-group';
       setEditorGroups(prev => {
-        const mainTabs = prev['main-group'] || [];
-        return { ...prev, 'main-group': [...mainTabs, tabId] };
+        const groupTabs = prev[targetGroup] || [];
+        return { ...prev, [targetGroup]: [...groupTabs, tabId] };
       });
-      setActiveTabPerGroup(prev => ({ ...prev, 'main-group': tabId }));
+      setActiveTabPerGroup(prev => ({ ...prev, [targetGroup]: tabId }));
     } catch (err) {
       console.error("Error: " + err);
     }
@@ -522,7 +558,6 @@ function App() {
       CloseTerminal(tabToRemove.sessionId).catch(err => {
         console.error("Failed to close terminal session:", err);
       });
-      terminalManager.removeInstance(tabToRemove.sessionId);
     }
 
     // Smart selection logic
@@ -561,9 +596,16 @@ function App() {
         setMosaicLayout(nextLayout);
       }
 
-      // Check if tab is anywhere else
       const isStillOpen = Object.values(newGroups).some(tabs => tabs.includes(id));
       if (!isStillOpen) {
+        // Pulizia istanze Singleton solo se la tab non è più presente in nessun gruppo
+        if (tabToRemove.type === 'terminal' && tabToRemove.sessionId) {
+          terminalManager.removeInstance(tabToRemove.sessionId);
+        }
+        if (tabToRemove.type === 'editor' || tabToRemove.type === 'log-viewer') {
+          editorManager.removeInstance(id);
+        }
+
         setTabRegistry(reg => {
           const newReg = { ...reg };
           delete newReg[id];
@@ -709,8 +751,9 @@ function App() {
       return newGroups;
     });
 
-    // 3. Set active tab for the new group
+    // 3. Set active tab for the new group and focus it
     setActiveTabPerGroup(prev => ({ ...prev, [newGroupId]: tabId }));
+    setFocusedGroupId(newGroupId);
   };
 
   // Memoized Views
@@ -785,15 +828,22 @@ function App() {
         >
           <TreeView 
             nodes={explorerNodes}
-            selectedId={activeTabPerGroup['main-group']}
-            onSelect={(node) => setActiveTabPerGroup(prev => ({ ...prev, 'main-group': node.id }))}
+            selectedId={activeTabPerGroup[focusedGroupId]}
+            onSelect={(node) => {
+              // Trova il gruppo che contiene già questa tab
+              const groupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(node.id));
+              if (groupId) {
+                setFocusedGroupId(groupId);
+                setActiveTabPerGroup(prev => ({ ...prev, [groupId]: node.id }));
+              }
+            }}
           />
         </SideBarSection>
       )}
       {activeSideBar === 'ast' && (
         <div className="p-2 overflow-x-auto">
-          {activeTabInGroup('main-group')?.ast ? (
-            <ASTNodeView node={activeTabInGroup('main-group')!.ast!} defaultExpanded={true} />
+          {activeTabInGroup(focusedGroupId)?.ast ? (
+            <ASTNodeView node={activeTabInGroup(focusedGroupId)!.ast!} defaultExpanded={true} />
           ) : (
             <div className="p-4 text-xs text-zinc-500 italic">{t('common.selectFileWithAst')}</div>
           )}
@@ -822,9 +872,14 @@ function App() {
           logFile: t.logFile
         }))}
         activeTabId={activeTabId || ''}
-        onTabSelect={(id) => setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }))}
+        isFocused={groupId === focusedGroupId}
+        onTabSelect={(id) => {
+          setActiveTabPerGroup(prev => ({ ...prev, [groupId]: id }));
+          setFocusedGroupId(groupId);
+        }}
         onTabClose={(id) => closeTab(id, groupId)}
         onReconnect={handleReconnectTerminal}
+        onFocus={() => setFocusedGroupId(groupId)}
         content={activeTab?.content || ''}
         language="text"
         isDragging={!!activeDragId}

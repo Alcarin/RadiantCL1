@@ -165,7 +165,7 @@ class TerminalManager {
     const instance = this.instances.get(sessionId);
     if (instance) {
       console.log(`[TerminalManager] Triggering zombie widget for ${sessionId}`);
-      this.onClose(sessionId, instance.term, 0, "Zombie restoration");
+      (instance as any).onCloseInternal?.();
     }
   }
 

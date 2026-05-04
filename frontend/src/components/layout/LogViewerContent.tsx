@@ -2,10 +2,11 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { PreloadLogFrames } from '../../../wailsjs/go/main/App';
 import { EventsOn, EventsEmit } from '../../../wailsjs/runtime/runtime';
-import { playbackStore } from '../../stores/playbackStore';
+import { getPlaybackStore } from '../../stores/playbackStore';
 import { exportToTxt, exportToHtml } from '../../lib/exportUtils';
 import { Icon } from '../ui/Icon';
 import { useTranslation } from 'react-i18next';
+import { editorManager } from '../../lib/editorManager';
 
 interface LogViewerContentProps {
   content: string;
@@ -39,6 +40,7 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
   // ── Posizione corrente: ref + state sincronizzati ──
   const [currentIndexState, _setCurrentIndexRaw] = useState(0);
   const currentIndexRef = useRef(0);
+  const playbackStore = getPlaybackStore(tabId);
   const setCurrentIndex = useCallback((val: number | ((prev: number) => number)) => {
     _setCurrentIndexRaw(prev => {
       const next = typeof val === 'function' ? val(prev) : val;
@@ -137,6 +139,8 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
         playbackStore.frameTimestamps = timestamps;
         playbackStore.isPlaying = false;
 
+        EventsEmit('app:playback:init', { totalLines: runningLines, marks, messages, timestamps, tabId });
+
         setDisplayContent(initialFull);
         setCurrentIndex(runningLines);
 
@@ -153,8 +157,16 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
       }
     };
     preload();
-    return () => { isMounted = false; };
-  }, [host, filename, setCurrentIndex]);
+    return () => { 
+      isMounted = false;
+      if (editorRef.current) {
+        const state = editorRef.current.saveViewState();
+        editorManager.saveViewState(tabId, state);
+        // Distacchiamo il modello per sicurezza
+        editorRef.current.setModel(null);
+      }
+    };
+  }, [host, filename, setCurrentIndex, tabId]);
 
   // ── displayFrame: STABILE — legge solo da refs, nessuna stale closure ──
   const displayFrame = useCallback((targetLine: number, instant: boolean = false) => {
@@ -336,7 +348,12 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
   useEffect(() => {
     if (editorRef.current) {
       const model = editorRef.current.getModel();
-      if (model) editorRef.current.revealLine(model.getLineCount());
+      if (model) {
+        if (model.getValue() !== displayContent) {
+          model.setValue(displayContent);
+        }
+        editorRef.current.revealLine(model.getLineCount());
+      }
     }
     applyCommitDecorations();
   }, [displayContent, applyCommitDecorations]);
@@ -375,9 +392,21 @@ export const LogViewerContent: React.FC<LogViewerContentProps> = ({
           height="100%"
           language="text"
           theme="vs-dark"
-          value={displayContent}
           onMount={(editor) => {
             editorRef.current = editor;
+            
+            // Recupera o crea il modello persistente
+            const model = editorManager.getOrCreateModel(tabId, displayContent, 'text');
+            editor.setModel(model);
+
+            // Ripristina lo stato della vista
+            const savedState = editorManager.getViewState(tabId);
+            if (savedState) {
+              setTimeout(() => {
+                editor.restoreViewState(savedState);
+              }, 50);
+            }
+
             // Se i frame sono già pronti (preload terminato prima del mount), applica subito
             if (framesRef.current.length > 0) applyCommitDecorations();
           }}

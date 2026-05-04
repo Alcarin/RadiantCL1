@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Independent Playback Sessions**: Converted the singleton playback store into an instance-based factory, allowing multiple logs to be replayed simultaneously in split-view without state interference.
+- **Unified Focus Highlighting**: Implemented global focus tracking for Mosaic panels; the active group is now clearly identified by a prominent 2px "Radiant Gold" top indicator on the focused tab.
+- **Intelligent Focus Routing**: Clicking on any sidebar item (connections, logs, or open editors) now automatically identifies the target group and shifts the global focus, ensuring interactions occur in the correct workspace context.
 - **Dynamic Workspace Management (Split-View)**: Implemented advanced panel management via `react-mosaic-component`, allowing users to split the workspace horizontally or vertically by dragging tabs to screen edges.
 - **Full State & Layout Persistence**: The application now automatically saves and restores the exact workspace configuration (open terminals, logs, files, and their relative positions) upon restart using a SQLite-backed state manager.
 - **Terminal Reconnection Engine**: Introduced a centralized `TerminalManager` and an interactive inline widget that appears within terminal sessions upon disconnection, supporting instant reconnection (`[R]`) or clean session closure (`[Q]`).
@@ -63,6 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Refined Tab Aesthetics**: Increased tab bar height to 42px to accommodate horizontal scrollbars without obstructing tab content or labels.
+- **Ergonomic Spacing**: Added 3px of top padding to the tab container to prevent the active indicator from being clipped by workspace split handles.
+- **Enhanced Focus Indicator**: Upgraded the active tab bar with a double-glow neon effect for improved visibility in complex multi-panel layouts.
+- **Explorer Sidebar Filtering**: Cleaned up the Explorer view to strictly show file buffers, moving log management exclusively to the dedicated History sidebar.
 - **Host List Toolbar**: Replaced individual Expand/Collapse buttons with a single dynamic toggle for improved sidebar space.
 - **Host Context Menu**: Added "Clone" and "Delete" actions to the context menu, removing inline icons for a cleaner look.
 - **Conditional Host Form**: The Credential Profile section now automatically hides for non-SSH protocols (Telnet).
@@ -73,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Editor State Preservation**: Implemented deterministic rendering keys for Mosaic groups, ensuring that moving tabs between panels preserves terminal buffers and Monaco editor state without re-initialization.
+- **Tab Duplication Bug**: Resolved a logic error where clicking a log in the history sidebar would always re-open it in the "main-group" (master panel); it now correctly focuses the existing tab if already open or opens it in the currently active group.
+- **Tab Split Focus**: Fixed an issue where newly created groups from a split operation wouldn't receive focus, leaving the active tab indicator hidden.
+- **Production Build Integrity**: Resolved TypeScript compilation errors (missing `useRef` and type mismatches) in `App.tsx` and verified build stability for production.
 - **UI Performance**: Eliminated console "chatter" and redundant DB writes by disabling individual node persistence during batch expansion.
 - **Invisible JJ Execution (Windows)**: Resolved an issue where external `jj` commands would trigger visible, short-lived DOS windows that stole focus. Implemented native Windows process attributes (`HideWindow`) for completely silent background execution.
 - **Icon Type Safety**: Resolved a TypeScript compilation error regarding the missing `copy` icon name.
@@ -100,13 +111,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drag and Drop Stability**: Fixed critical rendering issues where moving tabs between groups resulted in empty containers; implemented deterministic rendering keys for EditorGroup components.
 - **Mosaic Layout Persistence**: Resolved edge cases where empty groups remained in the layout registry after all tabs were closed or moved.
 - **Event Interference**: Fixed a bug where Wails global events (like terminal connection updates) were incorrectly captured by all open windows/tabs; implemented unique instance filtering.
-
-### Removed
-
-- **Activity Bar Account Icon**: Removed the redundant account icon from the bottom left sidebar to streamline the primary navigation interface.
-
-### Fixed
-
 - **Telnet Protocol Reliability**: Fixed an issue where no input or output was visible after establishing a Telnet connection.
 - **Robust Telnet Negotiation**: Implemented support for `ECHO` and `SGA` (Suppress Go Ahead) options (RFC 854/855), enabling remote echo for network devices.
 - **Transparent TCP Support**: Improved handling of raw data streams, allowing the terminal to be used for manual SMTP/HTTP protocol simulation.
@@ -126,5 +130,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Drag and Drop / Mouse Control**: Resolved runtime conflicts and crashes in the DND library (react-arborist vs react-mosaic-component).
 - **Context Switching**: Fixed stability issues when switching between different terminal or editor contexts.
 - **UI Contrast**: Implemented dynamic text color calculation (`oklch`) for Radiant Gold elements to ensure legibility on accent backgrounds.
+
+### Removed
+
+- **Activity Bar Account Icon**: Removed the redundant account icon from the bottom left sidebar to streamline the primary navigation interface.
 
 ---
