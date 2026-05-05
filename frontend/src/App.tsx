@@ -123,7 +123,7 @@ function App() {
         console.error("[RadiantCL1] Errore nel caricamento dello stato:", err);
       } finally {
         // Un piccolo ritardo per rendere il caricamento più piacevole
-        setTimeout(() => setIsAppLoaded(true), 600);
+        setTimeout(() => setIsAppLoaded(true), 1000);
       }
     };
     loadState();
@@ -976,15 +976,20 @@ function App() {
       {/* Premium Loading Overlay */}
       {!isAppLoaded && (
         <div className="fixed inset-0 z-[9999] bg-[#0b0e14] flex flex-col items-center justify-center transition-opacity duration-500">
-          <div className="relative w-24 h-24 mb-8">
-            <div className="absolute inset-0 rounded-full border-t-2 border-r-2 border-rd-focus-border animate-spin"></div>
-            <div className="absolute inset-2 rounded-full border-b-2 border-l-2 border-blue-500/30 animate-spin-slow"></div>
+          <div className="relative w-40 h-40 mb-12">
+            <div className="absolute inset-0 rounded-full border-t-4 border-r-4 border-rd-focus-border animate-spin"></div>
+            <div className="absolute inset-3 rounded-full border-b-4 border-l-4 border-blue-500/30 animate-spin-slow"></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <img src={logo} className="w-12 h-12 object-contain animate-pulse" alt="RadiantCL1 Logo" />
+              <img 
+                src={logo} 
+                className="w-20 h-20 animate-heartbeat" 
+                style={{ imageRendering: 'optimizeQuality' }}
+                alt="RadiantCL1 Logo" 
+              />
             </div>
           </div>
           <h2 className="text-xl font-light tracking-[0.2em] uppercase text-zinc-300 animate-pulse">
-            Radiant<span className="font-bold text-rd-focus-border">CL1</span>
+            <span className="font-bold text-rd-focus-border">RadiantCL1</span>
           </h2>
           <div className="mt-4 w-48 h-1 bg-zinc-800 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-transparent via-rd-focus-border to-transparent w-full animate-shimmer"></div>

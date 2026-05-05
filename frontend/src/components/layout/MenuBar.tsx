@@ -185,8 +185,13 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
       ref={menuRef}
     >
       {isMac ? renderMacControls() : (
-        <div className="flex items-center justify-center w-[46px] shrink-0">
-          <img src={logo} className="w-4 h-4 object-contain" alt="Logo" />
+        <div className="flex items-center justify-center w-12 shrink-0">
+          <img 
+            src={logo} 
+            className="w-6 h-6" 
+            style={{ imageRendering: 'optimizeQuality', transform: 'translateZ(0)' }}
+            alt="Logo" 
+          />
         </div>
       )}
 

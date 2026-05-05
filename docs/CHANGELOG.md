@@ -69,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Enhanced Branding**: Significantly enlarged the application logo across the UI and implemented a custom "heartbeat" CSS animation in the premium loader, providing a more dynamic and high-fidelity startup experience.
+- **Visual Alignment Refinement**: Standardized the menu bar logo container to 48px to achieve pixel-perfect vertical alignment with the primary Activity Bar navigation.
 - **Brand Refresh**: Updated application logo across all main touchpoints, including the title bar, loading overlay, and system executable icon.
 - **Proactive Frame Normalization**: Log frames are now normalized (`\r\n` -> `\n`) immediately upon preloading, eliminating double-spacing artifacts and ensuring consistent line height across the entire log history.
 - **Enhanced CSS Specificity**: Refactored the ANSI decoration styles to use high-specificity selectors, allowing colors to correctly override Monaco's internal tokenization without the need for `!important` flags.
