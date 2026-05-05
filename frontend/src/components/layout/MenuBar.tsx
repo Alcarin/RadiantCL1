@@ -189,7 +189,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onOpenFile }) => {
           <img 
             src={logo} 
             className="w-6 h-6" 
-            style={{ imageRendering: 'optimizeQuality', transform: 'translateZ(0)' }}
+            style={{ imageRendering: 'auto' as any, transform: 'translateZ(0)' }}
             alt="Logo" 
           />
         </div>

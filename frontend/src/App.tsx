@@ -984,7 +984,7 @@ function App() {
               <img 
                 src={logo} 
                 className="w-20 h-20 animate-heartbeat" 
-                style={{ imageRendering: 'optimizeQuality' }}
+                style={{ imageRendering: 'auto' as any }}
                 alt="RadiantCL1 Logo" 
               />
             </div>
