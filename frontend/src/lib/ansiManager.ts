@@ -17,10 +17,16 @@ export interface ParsedAnsi {
 }
 
 const colorMap: Record<string, string> = {
-  '31': 'ansi-red', '32': 'ansi-green', '33': 'ansi-yellow',
+  // Foreground
+  '30': 'ansi-black', '31': 'ansi-red', '32': 'ansi-green', '33': 'ansi-yellow',
   '34': 'ansi-blue', '35': 'ansi-magenta', '36': 'ansi-cyan', '37': 'ansi-white',
-  '91': 'ansi-bright-red', '92': 'ansi-bright-green', '93': 'ansi-bright-yellow',
-  '94': 'ansi-bright-blue', '95': 'ansi-bright-magenta', '96': 'ansi-bright-cyan'
+  '90': 'ansi-bright-black', '91': 'ansi-bright-red', '92': 'ansi-bright-green', '93': 'ansi-bright-yellow',
+  '94': 'ansi-bright-blue', '95': 'ansi-bright-magenta', '96': 'ansi-bright-cyan', '97': 'ansi-bright-white',
+  // Background
+  '40': 'ansi-bg-black', '41': 'ansi-bg-red', '42': 'ansi-bg-green', '43': 'ansi-bg-yellow',
+  '44': 'ansi-bg-blue', '45': 'ansi-bg-magenta', '46': 'ansi-bg-cyan', '47': 'ansi-bg-white',
+  '100': 'ansi-bg-bright-black', '101': 'ansi-bg-bright-red', '102': 'ansi-bg-bright-green', '103': 'ansi-bg-bright-yellow',
+  '104': 'ansi-bg-bright-blue', '105': 'ansi-bg-bright-magenta', '106': 'ansi-bg-bright-cyan', '107': 'ansi-bg-bright-white'
 };
 
 /**
@@ -33,7 +39,7 @@ export function parseAnsi(text: string): ParsedAnsi {
   const decorations: monaco.editor.IModelDeltaDecoration[] = [];
   
   let cleanText = '';
-  let currentState: AnsiState = {};
+  let currentState: { fg?: string, bg?: string, bold?: boolean } = {};
   let lastPos = 0;
   
   // Per tracciare la posizione nel TESTO PULITO
@@ -63,7 +69,8 @@ export function parseAnsi(text: string): ParsedAnsi {
 
       // Se abbiamo uno stato attivo (colore/bold), crea la decorazione per questa parte
       const classes = [];
-      if (currentState.foreground) classes.push(currentState.foreground);
+      if (currentState.fg) classes.push(currentState.fg);
+      if (currentState.bg) classes.push(currentState.bg);
       if (currentState.bold) classes.push('ansi-bold');
 
       if (classes.length > 0) {
@@ -86,9 +93,16 @@ export function parseAnsi(text: string): ParsedAnsi {
         if (cleanP === '') continue;
         const codeNum = parseInt(cleanP, 10);
         const code = codeNum.toString();
+        
         if (code === '0') currentState = {};
         else if (code === '1') currentState.bold = true;
-        else if (colorMap[code]) currentState.foreground = colorMap[code];
+        else if (colorMap[code]) {
+          if (codeNum >= 30 && codeNum <= 37 || codeNum >= 90 && codeNum <= 97) {
+            currentState.fg = colorMap[code];
+          } else if (codeNum >= 40 && codeNum <= 47 || codeNum >= 100 && codeNum <= 107) {
+            currentState.bg = colorMap[code];
+          }
+        }
       }
     }
     
@@ -106,7 +120,8 @@ export function parseAnsi(text: string): ParsedAnsi {
       else { currentCol++; }
     }
     const classes = [];
-    if (currentState.foreground) classes.push(currentState.foreground);
+    if (currentState.fg) classes.push(currentState.fg);
+    if (currentState.bg) classes.push(currentState.bg);
     if (currentState.bold) classes.push('ansi-bold');
     if (classes.length > 0) {
       decorations.push({
@@ -120,8 +135,6 @@ export function parseAnsi(text: string): ParsedAnsi {
   }
 
   // Pulizia finale per sicurezza da eventuali caratteri di controllo orfani non catturati dal regex
-  // Nota: questo potrebbe sballare leggermente le decorazioni se toglie caratteri, 
-  // ma i caratteri di controllo (0-31) non dovrebbero essere presenti nel testo "plain".
   cleanText = cleanText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
 
   return { cleanText, decorations };
