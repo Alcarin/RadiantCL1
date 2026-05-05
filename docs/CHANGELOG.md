@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Interactive Sidebar Navigation**: Clicking on an active connection in the sidebar now automatically focuses the corresponding terminal tab and its parent workspace group, ensuring immediate context switching.
 - **High-Fidelity ANSI Rendering**: Complete overhaul of the log viewer parsing engine; it now correctly identifies and strips complex CSI/OSC escape sequences while preserving visual metadata.
 - **Atomic Decoration Mapping**: Implemented a single-pass parser in `ansiManager` that computes decoration ranges in real-time as the text is cleaned, ensuring styles (bold, colors) are perfectly aligned with the displayed content.
 - **xterm.js Color Parity**: Aligned the ANSI color palette with the standard xterm.js (Ubuntu/Gnome Terminal) theme, providing a consistent visual experience between live terminals and recorded logs.

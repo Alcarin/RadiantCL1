@@ -22,6 +22,7 @@ interface TreeViewProps {
   renderNodeActions?: (node: TreeNode) => React.ReactNode;
   onMove?: (args: { dragIds: string[]; parentId: string | null; index: number }) => void;
   onNodeDoubleClick?: (node: TreeNode) => void;
+  onNodeClick?: (node: TreeNode) => void;
   onNodeContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
   isSortable?: boolean;
   className?: string;
@@ -37,11 +38,12 @@ export interface TreeViewHandle {
 interface NodeRendererExtraProps extends NodeRendererProps<TreeNode> {
   renderNodeActions?: (node: TreeNode) => React.ReactNode;
   onNodeDoubleClick?: (node: TreeNode) => void;
+  onNodeClick?: (node: TreeNode) => void;
   onNodeContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
   showGuides?: boolean;
 }
 
-const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNodeDoubleClick, onNodeContextMenu, showGuides }: NodeRendererExtraProps) => {
+const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNodeDoubleClick, onNodeClick, onNodeContextMenu, showGuides }: NodeRendererExtraProps) => {
   const isFolder = node.data.id.startsWith('f-') || (node.data.children && node.data.children.length > 0);
   const hasChildren = node.data.children && node.data.children.length > 0;
   const isSelected = node.isSelected;
@@ -65,6 +67,7 @@ const NodeRenderer = ({ node, style, dragHandle, tree, renderNodeActions, onNode
       )}
       onClick={(e) => {
         node.select();
+        onNodeClick?.(node.data);
       }}
       onDoubleClick={(e) => {
         if (onNodeDoubleClick) {
@@ -225,6 +228,7 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
   disableDropInto = false,
   initialOpenState,
   onNodeDoubleClick,
+  onNodeClick,
   onNodeContextMenu,
   height,
 }, ref) => {
@@ -291,6 +295,7 @@ export const TreeView = forwardRef<TreeViewHandle, TreeViewProps>(({
             {...props} 
             renderNodeActions={renderNodeActions} 
             onNodeDoubleClick={onNodeDoubleClick}
+            onNodeClick={onNodeClick}
             onNodeContextMenu={onNodeContextMenu}
             showGuides={showGuides} 
           />

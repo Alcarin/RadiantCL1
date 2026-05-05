@@ -826,6 +826,7 @@ function App() {
             const tabId = `term-${sessionId}`;
             const groupId = Object.keys(editorGroups).find(gid => editorGroups[gid].includes(tabId)) || 'main-group';
             setActiveTabPerGroup(prev => ({ ...prev, [groupId]: tabId }));
+            setFocusedGroupId(groupId);
           }}
         />
       )}

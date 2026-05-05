@@ -330,6 +330,9 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({ tabRegistry = 
                   setSelectedHostId(node.id);
                   onSelectTerminal?.(node.id);
                 }}
+                onNodeClick={(node) => {
+                  onSelectTerminal?.(node.id);
+                }}
                 onMove={handleMoveActive}
                 disableDropInto={true}
                 showGuides={false}
